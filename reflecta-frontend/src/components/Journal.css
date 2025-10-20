@@ -289,42 +289,100 @@
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .journal-container {
-    padding: 15px;
+    padding: 12px;
   }
-  
+
   .journal-header h1 {
-    font-size: 28px;
+    font-size: 24px;
+    margin-bottom: 8px;
   }
-  
+
   .journal-header p {
-    font-size: 16px;
-  }
-  
-  .journal-tabs {
-    gap: 8px;
-  }
-  
-  .tab-button {
-    padding: 10px 16px;
     font-size: 14px;
   }
-  
-  .write-entry, .entries-list {
-    padding: 20px;
+
+  .journal-tabs {
+    gap: 6px;
   }
-  
+
+  .tab-button {
+    padding: 8px 12px;
+    font-size: 13px;
+    gap: 4px;
+  }
+
+  .write-entry, .entries-list {
+    padding: 16px;
+    border-radius: 12px;
+  }
+
+  .entry-form {
+    gap: 16px;
+  }
+
+  .form-group label {
+    font-size: 13px;
+  }
+
+  .entry-input, .entry-textarea, .mood-select {
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .entry-textarea {
+    min-height: 100px;
+  }
+
+  .save-button {
+    width: 100%;
+    padding: 12px 24px;
+    font-size: 15px;
+  }
+
   .entries-grid {
     grid-template-columns: 1fr;
-    gap: 15px;
+    gap: 12px;
   }
-  
+
   .entry-card {
-    padding: 15px;
+    padding: 14px;
   }
-  
+
+  .entry-header h3 {
+    font-size: 16px;
+  }
+
+  .entry-preview {
+    font-size: 13px;
+  }
+
   .chat-tab {
-    height: 65vh;
+    height: calc(100vh - 200px);
     min-height: 400px;
+  }
+
+  .modal-overlay {
+    padding: 10px;
+  }
+
+  .modal-content {
+    max-height: 90vh;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 20px;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .entry-content {
+    font-size: 14px;
   }
 }
 

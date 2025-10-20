@@ -172,24 +172,107 @@
 }
 
 @media (max-width: 768px) {
-  .dashboard-header h1 {
-    font-size: 24px;
+  .dashboard-main {
+    padding: 0 16px;
   }
-  
+
+  .dashboard-header {
+    padding: 16px 0;
+    margin-bottom: 20px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 22px;
+  }
+
   .user-info {
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
   }
-  
+
+  .user-info span {
+    font-size: 14px;
+  }
+
+  .logout-button {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
   .welcome-section {
-    padding: 25px;
+    padding: 24px 20px;
+    margin-bottom: 20px;
   }
-  
+
+  .welcome-section h2 {
+    font-size: 22px;
+    margin-bottom: 12px;
+  }
+
+  .welcome-section p {
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .user-details {
+    padding: 20px;
+  }
+
+  .user-details h3 {
+    font-size: 18px;
+    margin-bottom: 16px;
+  }
+
+  .user-details p {
+    font-size: 13px;
+  }
+
   .features-section {
-    padding: 25px;
+    padding: 24px 20px;
   }
-  
+
+  .features-section h3 {
+    font-size: 20px;
+    margin-bottom: 24px;
+  }
+
   .features-grid {
     grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .feature-card {
+    padding: 20px;
+  }
+
+  .feature-card h4 {
+    font-size: 16px;
+    margin-bottom: 12px;
+  }
+
+  .feature-card p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .dashboard-header h1 {
+    font-size: 20px;
+  }
+
+  .welcome-section h2 {
+    font-size: 20px;
+  }
+
+  .welcome-section {
+    padding: 20px 16px;
+  }
+
+  .features-section {
+    padding: 20px 16px;
+  }
+
+  .features-section h3 {
+    font-size: 18px;
   }
 }
