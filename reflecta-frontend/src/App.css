@@ -20,6 +20,27 @@ body {
   background-color: #0f172a;
 }
 
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  background-color: #0f172a;
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  min-height: 100vh;
+  background-color: #0f172a;
+  transition: margin-left 0.3s ease;
+}
+
+/* Responsive design for sidebar */
+@media (max-width: 768px) {
+  .main-content {
+    margin-left: 70px;
+  }
+}
+
 .loading {
   display: flex;
   justify-content: center;

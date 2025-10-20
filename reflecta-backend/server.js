@@ -1435,6 +1435,259 @@ app.post("/api/chat/enhanced", authenticateToken, async (req, res) => {
   }
 });
 
+// AI Progress Summary endpoint
+app.get(
+  "/api/goals/:goalId/ai-summary",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const period = req.query.period || "weekly";
+
+      // Get goal progress data
+      const { start, end } = getPeriodBounds(period);
+      const progressEntries = await GoalProgress.find({
+        userId: req.user.userId,
+        goalId,
+        date: { $gte: start, $lte: end },
+      }).sort({ date: -1 });
+
+      // Get related journal entries
+      const journalEntries = await JournalEntry.find({
+        userId: req.user.userId,
+        relatedGoalId: goalId,
+        date: { $gte: start, $lte: end },
+      }).sort({ date: -1 });
+
+      // Prepare context for AI
+      const progressSummary = progressEntries
+        .map(
+          (p) =>
+            `${p.date.toLocaleDateString()}: ${p.title} - ${p.description}`
+        )
+        .join("\n");
+
+      const journalSummary = journalEntries
+        .slice(0, 5)
+        .map((j) => `${j.date.toLocaleDateString()}: ${j.content.substring(0, 200)}...`)
+        .join("\n");
+
+      const prompt = `You are a personal growth coach analyzing a user's progress on their goal.
+
+Period: ${period}
+Progress Entries (${progressEntries.length}):
+${progressSummary || "No progress entries yet"}
+
+Related Journal Entries (${journalEntries.length}):
+${journalSummary || "No journal entries yet"}
+
+Please provide:
+1. A brief, encouraging summary of their progress (2-3 sentences)
+2. Key achievements this period (bullet points)
+3. Areas for improvement (bullet points)
+4. Recommended next steps (bullet points)
+
+Format your response as JSON:
+{
+  "summary": "...",
+  "achievements": ["...", "..."],
+  "improvements": ["...", "..."],
+  "nextSteps": ["...", "..."]
+}`;
+
+      const response = await fetch(process.env.OPENAI_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-4",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7,
+          response_format: { type: "json_object" },
+        }),
+      });
+
+      const data = await response.json();
+      const aiSummary = JSON.parse(data.choices[0].message.content);
+
+      res.json({
+        ...aiSummary,
+        stats: {
+          progressCount: progressEntries.length,
+          journalCount: journalEntries.length,
+          period,
+        },
+      });
+    } catch (error) {
+      console.error("AI summary error:", error);
+      res.status(500).json({ error: "Failed to generate AI summary" });
+    }
+  }
+);
+
+// Word Cloud data endpoint
+app.get(
+  "/api/goals/:goalId/wordcloud",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const period = req.query.period || "weekly";
+
+      const { start, end } = getPeriodBounds(period);
+
+      // Get progress entries and journal entries
+      const progressEntries = await GoalProgress.find({
+        userId: req.user.userId,
+        goalId,
+        date: { $gte: start, $lte: end },
+      });
+
+      const journalEntries = await JournalEntry.find({
+        userId: req.user.userId,
+        relatedGoalId: goalId,
+        date: { $gte: start, $lte: end },
+      });
+
+      // Combine all text
+      const allText =
+        progressEntries.map((p) => `${p.title} ${p.description}`).join(" ") +
+        " " +
+        journalEntries.map((j) => j.content).join(" ");
+
+      // Simple word frequency analysis (remove common words)
+      const stopWords = new Set([
+        "the",
+        "a",
+        "an",
+        "and",
+        "or",
+        "but",
+        "in",
+        "on",
+        "at",
+        "to",
+        "for",
+        "of",
+        "with",
+        "by",
+        "from",
+        "as",
+        "is",
+        "was",
+        "are",
+        "were",
+        "been",
+        "be",
+        "have",
+        "has",
+        "had",
+        "do",
+        "does",
+        "did",
+        "will",
+        "would",
+        "should",
+        "could",
+        "may",
+        "might",
+        "can",
+        "my",
+        "your",
+        "his",
+        "her",
+        "its",
+        "our",
+        "their",
+        "this",
+        "that",
+        "these",
+        "those",
+        "i",
+        "you",
+        "he",
+        "she",
+        "it",
+        "we",
+        "they",
+      ]);
+
+      const words = allText
+        .toLowerCase()
+        .replace(/[^\w\s]/g, "")
+        .split(/\s+/)
+        .filter((word) => word.length > 3 && !stopWords.has(word));
+
+      const wordFreq = {};
+      words.forEach((word) => {
+        wordFreq[word] = (wordFreq[word] || 0) + 1;
+      });
+
+      // Convert to array and sort
+      const wordCloudData = Object.entries(wordFreq)
+        .map(([text, value]) => ({ text, value }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 50); // Top 50 words
+
+      res.json({ words: wordCloudData });
+    } catch (error) {
+      console.error("Word cloud error:", error);
+      res.status(500).json({ error: "Failed to generate word cloud" });
+    }
+  }
+);
+
+// Progress Chart data endpoint
+app.get(
+  "/api/goals/:goalId/chart-data",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const period = req.query.period || "weekly";
+
+      const { start, end } = getPeriodBounds(period);
+
+      const progressEntries = await GoalProgress.find({
+        userId: req.user.userId,
+        goalId,
+        date: { $gte: start, $lte: end },
+      }).sort({ date: 1 });
+
+      // Group by date
+      const dailyData = {};
+      progressEntries.forEach((entry) => {
+        const dateKey = entry.date.toISOString().split("T")[0];
+        if (!dailyData[dateKey]) {
+          dailyData[dateKey] = {
+            date: dateKey,
+            count: 0,
+            timeSpent: 0,
+            entries: [],
+          };
+        }
+        dailyData[dateKey].count += 1;
+        dailyData[dateKey].timeSpent += entry.timeSpent || 0;
+        dailyData[dateKey].entries.push(entry);
+      });
+
+      const chartData = Object.values(dailyData).map((day) => ({
+        date: day.date,
+        count: day.count,
+        timeSpent: day.timeSpent,
+        avgMood: day.entries.reduce((acc, e) => acc + (e.mood === "happy" ? 5 : e.mood === "excited" ? 4 : e.mood === "calm" ? 3 : e.mood === "neutral" ? 2 : 1), 0) / day.entries.length,
+      }));
+
+      res.json({ chartData, period });
+    } catch (error) {
+      console.error("Chart data error:", error);
+      res.status(500).json({ error: "Failed to generate chart data" });
+    }
+  }
+);
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ status: "OK", timestamp: new Date().toISOString() });

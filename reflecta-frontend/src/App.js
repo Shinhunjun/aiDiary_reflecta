@@ -14,7 +14,7 @@ import Home from "./components/Home";
 import Journal from "./components/Journal";
 import GoalSetting from "./components/GoalSetting";
 import ProgressTracking from "./components/ProgressTracking";
-import Navbar from "./components/Navbar";
+import Sidebar from "./components/Sidebar";
 import "./App.css";
 
 // 보호된 라우트 컴포넌트
@@ -44,59 +44,61 @@ function App() {
     <AuthProvider>
       <JournalProvider>
         <Router>
-          <Navbar />
-          <div className="App">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route
-                path="/login"
-                element={
-                  <PublicRoute>
-                    <Login />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/signup"
-                element={
-                  <PublicRoute>
-                    <Signup />
-                  </PublicRoute>
-                }
-              />
-              <Route
-                path="/dashboard"
-                element={
-                  <ProtectedRoute>
-                    <Dashboard />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/journal"
-                element={
-                  <ProtectedRoute>
-                    <Journal />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/goal-setting"
-                element={
-                  <ProtectedRoute>
-                    <GoalSetting />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/progress"
-                element={
-                  <ProtectedRoute>
-                    <ProgressTracking />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
+          <div className="app-container">
+            <Sidebar />
+            <div className="main-content">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route
+                  path="/login"
+                  element={
+                    <PublicRoute>
+                      <Login />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/signup"
+                  element={
+                    <PublicRoute>
+                      <Signup />
+                    </PublicRoute>
+                  }
+                />
+                <Route
+                  path="/dashboard"
+                  element={
+                    <ProtectedRoute>
+                      <Dashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/journal"
+                  element={
+                    <ProtectedRoute>
+                      <Journal />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/goal-setting"
+                  element={
+                    <ProtectedRoute>
+                      <GoalSetting />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/progress"
+                  element={
+                    <ProtectedRoute>
+                      <ProgressTracking />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </div>
           </div>
         </Router>
       </JournalProvider>

@@ -10,7 +10,7 @@ const Journal = () => {
   const { user } = useAuth();
   const { journalEntries, updateJournalEntries, refreshTrigger } = useJournal();
   const [searchParams] = useSearchParams();
-  const [activeTab, setActiveTab] = useState("write");
+  const [activeTab, setActiveTab] = useState("chat");
   const [currentEntry, setCurrentEntry] = useState({
     title: "",
     content: "",
@@ -173,6 +173,12 @@ const Journal = () => {
 
       <div className="journal-tabs">
         <button
+          className={`tab-button ${activeTab === "chat" ? "active" : ""}`}
+          onClick={() => setActiveTab("chat")}
+        >
+          🤖 AI Chat
+        </button>
+        <button
           className={`tab-button ${activeTab === "write" ? "active" : ""}`}
           onClick={() => setActiveTab("write")}
         >
@@ -184,15 +190,15 @@ const Journal = () => {
         >
           📖 My Entries
         </button>
-        <button
-          className={`tab-button ${activeTab === "chat" ? "active" : ""}`}
-          onClick={() => setActiveTab("chat")}
-        >
-          🤖 AI Assistant
-        </button>
       </div>
 
       <div className="journal-content">
+        {activeTab === "chat" && (
+          <div className="chat-tab">
+            <Chat />
+          </div>
+        )}
+
         {activeTab === "write" && (
           <div className="write-entry">
             <div className="entry-form">
@@ -339,12 +345,6 @@ const Journal = () => {
                 ))}
               </div>
             )}
-          </div>
-        )}
-
-        {activeTab === "chat" && (
-          <div className="chat-tab">
-            <Chat />
           </div>
         )}
       </div>
