@@ -1,0 +1,1456 @@
+const express = require("express");
+const mongoose = require("mongoose");
+const cors = require("cors");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { body, validationResult } = require("express-validator");
+require("dotenv").config();
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+
+// Middleware
+const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
+  .split(",")
+  .map(origin => origin.trim());
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      // Allow requests with no origin (like mobile apps or curl requests)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true,
+  })
+);
+app.use(express.json());
+
+// Helper utilities for progress summaries
+const PERIOD_OPTIONS = ["weekly", "monthly", "quarterly", "yearly"];
+
+const getPeriodBounds = (period = "weekly") => {
+  const now = new Date();
+  let start;
+
+  switch (period) {
+    case "weekly": {
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday start
+      start = new Date(now.getFullYear(), now.getMonth(), diff);
+      break;
+    }
+    case "monthly":
+      start = new Date(now.getFullYear(), now.getMonth(), 1);
+      break;
+    case "quarterly": {
+      const currentQuarter = Math.floor(now.getMonth() / 3);
+      start = new Date(now.getFullYear(), currentQuarter * 3, 1);
+      break;
+    }
+    case "yearly":
+      start = new Date(now.getFullYear(), 0, 1);
+      break;
+    default:
+      start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+  }
+
+  start.setHours(0, 0, 0, 0);
+  return { start, end: now };
+};
+
+const getTimelineFormat = (period = "weekly") => {
+  switch (period) {
+    case "weekly":
+    case "monthly":
+      return "%Y-%m-%d";
+    case "quarterly":
+      return "%Y-%m-%d";
+    case "yearly":
+      return "%Y-%m";
+    default:
+      return "%Y-%m-%d";
+  }
+};
+
+// MongoDB Connection
+mongoose
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/reflecta", {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("MongoDB connected successfully"))
+  .catch((err) => console.error("MongoDB connection error:", err));
+
+// Models
+const User = require("./models/User");
+const Goal = require("./models/Goal");
+const JournalEntry = require("./models/JournalEntry");
+const ChatSession = require("./models/ChatSession");
+const GoalProgress = require("./models/GoalProgress");
+
+// Auth middleware
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+
+  if (!token) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+
+  jwt.verify(
+    token,
+    process.env.JWT_SECRET || "fallback_secret",
+    (err, user) => {
+      if (err) {
+        return res.status(403).json({ error: "Invalid or expired token" });
+      }
+      req.user = user;
+      next();
+    }
+  );
+};
+
+// Routes
+
+// Auth Routes
+app.post(
+  "/api/auth/register",
+  [
+    body("email").isEmail().normalizeEmail(),
+    body("password").isLength({ min: 6 }),
+    body("name").trim().isLength({ min: 1 }),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { email, password, name } = req.body;
+
+      // Check if user already exists
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res.status(400).json({ error: "User already exists" });
+      }
+
+      // Hash password
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      // Create user
+      const user = new User({
+        email,
+        password: hashedPassword,
+        name,
+      });
+
+      await user.save();
+
+      // Generate JWT
+      const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET || "fallback_secret",
+        { expiresIn: "7d" }
+      );
+
+      res.status(201).json({
+        message: "User created successfully",
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+        },
+      });
+    } catch (error) {
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/auth/login",
+  [
+    body("email").isEmail().normalizeEmail(),
+    body("password").isLength({ min: 1 }),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { email, password } = req.body;
+
+      // Find user
+      const user = await User.findOne({ email });
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Check password
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+
+      // Generate JWT
+      const token = jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET || "fallback_secret",
+        { expiresIn: "7d" }
+      );
+
+      res.json({
+        message: "Login successful",
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+        },
+      });
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Get current user info
+app.get("/api/auth/me", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("-password");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    res.json(user);
+  } catch (error) {
+    console.error("Get user error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Goals Routes
+app.get("/api/goals", authenticateToken, async (req, res) => {
+  try {
+    const goals = await Goal.find({ userId: req.user.userId });
+    res.json(goals);
+  } catch (error) {
+    console.error("Get goals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/api/goals", authenticateToken, async (req, res) => {
+  try {
+    const { mandalartData } = req.body;
+
+    let goal = await Goal.findOne({ userId: req.user.userId });
+
+    if (goal) {
+      goal.mandalartData = mandalartData;
+      goal.updatedAt = new Date();
+    } else {
+      goal = new Goal({
+        userId: req.user.userId,
+        mandalartData,
+      });
+    }
+
+    await goal.save();
+    res.json({ message: "Goals saved successfully", goal });
+  } catch (error) {
+    console.error("Save goals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Journal Routes
+app.get("/api/journal", authenticateToken, async (req, res) => {
+  try {
+    const entries = await JournalEntry.find({ userId: req.user.userId }).sort({
+      date: -1,
+    });
+    res.json(entries);
+  } catch (error) {
+    console.error("Get journal entries error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get specific journal entry
+app.get("/api/journal/:id", authenticateToken, async (req, res) => {
+  try {
+    const entry = await JournalEntry.findOne({
+      _id: req.params.id,
+      userId: req.user.userId,
+    });
+
+    if (!entry) {
+      return res.status(404).json({ error: "Journal entry not found" });
+    }
+
+    res.json(entry);
+  } catch (error) {
+    console.error("Get journal entry error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post(
+  "/api/journal",
+  authenticateToken,
+  [
+    body("title").trim().isLength({ min: 1 }),
+    body("content").trim().isLength({ min: 1 }),
+    body("mood").isIn([
+      "happy",
+      "sad",
+      "excited",
+      "calm",
+      "anxious",
+      "grateful",
+      "neutral",
+      "reflective",
+    ]),
+    body("tags").isArray(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const {
+        title,
+        content,
+        mood,
+        tags,
+        isAIGenerated = false,
+        relatedGoalId,
+        relatedGoalType,
+      } = req.body;
+
+      // If no goal mapping provided, try to analyze the content
+      let finalRelatedGoalId = relatedGoalId || null;
+      let finalRelatedGoalType = relatedGoalType || null;
+
+      if (!finalRelatedGoalId && isAIGenerated) {
+        try {
+          // Get user's goals structure for analysis
+          const goals = await Goal.find({ userId: req.user.userId });
+          const flattenedGoals = [];
+
+          goals.forEach((goal) => {
+            if (goal.mandalartData) {
+              // Main goal
+              flattenedGoals.push({
+                id: goal.mandalartData.id,
+                text: goal.mandalartData.text,
+                type: "main",
+                description: goal.mandalartData.description || "",
+              });
+
+              // Sub-goals
+              if (goal.mandalartData.subGoals) {
+                goal.mandalartData.subGoals.forEach((subGoal) => {
+                  if (subGoal && subGoal.text) {
+                    flattenedGoals.push({
+                      id: subGoal.id,
+                      text: subGoal.text,
+                      type: "sub",
+                      description: subGoal.description || "",
+                    });
+
+                    // Sub-sub-goals
+                    if (subGoal.subGoals) {
+                      subGoal.subGoals.forEach((subSubGoal) => {
+                        if (subSubGoal && subSubGoal.text) {
+                          flattenedGoals.push({
+                            id: subSubGoal.id,
+                            text: subSubGoal.text,
+                            type: "sub-sub",
+                            description: subSubGoal.description || "",
+                          });
+                        }
+                      });
+                    }
+                  }
+                });
+              }
+            }
+          });
+
+          // Simple keyword matching for goal mapping
+          const contentLower = content.toLowerCase();
+          if (
+            contentLower.includes("run") ||
+            contentLower.includes("running")
+          ) {
+            const runGoal = flattenedGoals.find(
+              (goal) => goal.text && goal.text.toLowerCase().includes("run")
+            );
+            if (runGoal) {
+              finalRelatedGoalId = runGoal.id;
+              finalRelatedGoalType = runGoal.type;
+            }
+          }
+        } catch (error) {
+          console.error("Error analyzing goal mapping:", error);
+        }
+      }
+
+      const entry = new JournalEntry({
+        userId: req.user.userId,
+        title,
+        content,
+        mood,
+        tags: tags || [],
+        date: new Date(),
+        isAIGenerated,
+        relatedGoalId: finalRelatedGoalId,
+        relatedGoalType: finalRelatedGoalType,
+      });
+
+      await entry.save();
+      res
+        .status(201)
+        .json({ message: "Journal entry saved successfully", entry });
+    } catch (error) {
+      console.error("Save journal entry error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Goal Progress Routes
+app.get("/api/goals/:goalId/progress", authenticateToken, async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const progress = await GoalProgress.find({
+      userId: req.user.userId,
+      goalId: goalId,
+    }).sort({ date: -1 });
+
+    res.json(progress);
+  } catch (error) {
+    console.error("Get goal progress error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get(
+  "/api/goals/:goalId/progress/summary",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const periodParam = (req.query.period || "weekly").toLowerCase();
+      const period = PERIOD_OPTIONS.includes(periodParam)
+        ? periodParam
+        : "weekly";
+
+      const { start, end } = getPeriodBounds(period);
+
+      const matchStage = {
+        userId: mongoose.Types.ObjectId.isValid(req.user.userId)
+          ? new mongoose.Types.ObjectId(req.user.userId)
+          : req.user.userId,
+        goalId,
+      };
+
+      if (start && end) {
+        matchStage.date = { $gte: start, $lte: end };
+      }
+
+      const basePipeline = [{ $match: matchStage }];
+
+      console.log("Progress summary request", {
+        userId: req.user.userId,
+        goalId,
+        period,
+        range: { start, end },
+      });
+
+      const [totals = null] = await GoalProgress.aggregate([
+        ...basePipeline,
+        {
+          $group: {
+            _id: null,
+            totalEntries: { $sum: 1 },
+            totalTime: { $sum: "$timeSpent" },
+            lastActivity: { $max: "$date" },
+          },
+        },
+      ]);
+
+      console.log("Progress totals", totals);
+
+      const typeBreakdown = await GoalProgress.aggregate([
+        ...basePipeline,
+        {
+          $group: {
+            _id: "$progressType",
+            count: { $sum: 1 },
+            lastEntry: { $max: "$date" },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]);
+
+      console.log("Progress type breakdown", typeBreakdown);
+
+      const subGoalAggregation = await GoalProgress.aggregate([
+        ...basePipeline,
+        {
+          $addFields: {
+            subGoalKey: { $ifNull: ["$subGoalId", "__main__"] },
+          },
+        },
+        {
+          $group: {
+            _id: "$subGoalKey",
+            count: { $sum: 1 },
+            totalTime: { $sum: "$timeSpent" },
+            lastEntry: { $max: "$date" },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]);
+
+      console.log("Sub-goal aggregation", subGoalAggregation);
+
+      const timelineFormat = getTimelineFormat(period);
+      const timeline = await GoalProgress.aggregate([
+        ...basePipeline,
+        {
+          $group: {
+            _id: {
+              bucket: {
+                $dateToString: { format: timelineFormat, date: "$date" },
+              },
+              type: "$progressType",
+            },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $group: {
+            _id: "$_id.bucket",
+            total: { $sum: "$count" },
+            breakdown: {
+              $push: { type: "$_id.type", count: "$count" },
+            },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]);
+
+      console.log("Timeline aggregation", timeline);
+
+      // Build label map for goals/sub-goals
+      const goalDoc = await Goal.findOne({
+        userId: req.user.userId,
+        "mandalartData.id": goalId,
+      });
+
+      const goalLabelMap = {};
+      if (goalDoc?.mandalartData) {
+        const traverse = (node, depth = 0) => {
+          if (!node || !node.id) return;
+          goalLabelMap[node.id] = node.text || "Unnamed Goal";
+          if (Array.isArray(node.subGoals)) {
+            node.subGoals
+              .filter(Boolean)
+              .forEach((child) => traverse(child, depth + 1));
+          }
+        };
+        traverse(goalDoc.mandalartData);
+      }
+
+      const subGoals = subGoalAggregation.map((entry) => {
+        const isMain = entry._id === "__main__";
+        return {
+          id: isMain ? goalId : entry._id,
+          label: isMain
+            ? goalLabelMap[goalId] || "Main Goal"
+            : goalLabelMap[entry._id] || "Sub Goal",
+          count: entry.count,
+          totalTime: entry.totalTime,
+          lastEntry: entry.lastEntry,
+        };
+      });
+
+      res.json({
+        goalId,
+        period,
+        range: {
+          start: start?.toISOString() || null,
+          end: end?.toISOString() || null,
+        },
+        totals: totals || {
+          totalEntries: 0,
+          totalTime: 0,
+          lastActivity: null,
+        },
+        progressTypes: typeBreakdown.map((item) => ({
+          type: item._id,
+          count: item.count,
+          lastEntry: item.lastEntry,
+        })),
+        subGoals,
+        timeline: timeline.map((item) => ({
+          bucket: item._id,
+          total: item.total,
+          breakdown: item.breakdown,
+        })),
+      });
+    } catch (error) {
+      console.error("Get goal progress summary error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+app.post(
+  "/api/goals/:goalId/progress",
+  authenticateToken,
+  [
+    body("title").trim().isLength({ min: 1 }),
+    body("description").trim().isLength({ min: 1 }),
+    body("progressType").isIn([
+      "milestone",
+      "checkin",
+      "completion",
+      "reflection",
+    ]),
+    body("mood")
+      .optional()
+      .isIn([
+        "happy",
+        "sad",
+        "excited",
+        "calm",
+        "anxious",
+        "grateful",
+        "neutral",
+        "reflective",
+      ]),
+    body("difficulty").optional().isIn(["easy", "medium", "hard"]),
+    body("timeSpent").optional().isNumeric(),
+  ],
+  async (req, res) => {
+    try {
+      const errors = validationResult(req);
+      if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+      }
+
+      const { goalId } = req.params;
+      const {
+        subGoalId,
+        progressType,
+        title,
+        description,
+        mood = "neutral",
+        tags = [],
+        difficulty = "medium",
+        timeSpent = 0,
+        notes,
+        isAIGenerated = false,
+      } = req.body;
+
+      const progress = new GoalProgress({
+        userId: req.user.userId,
+        goalId,
+        subGoalId,
+        progressType,
+        title,
+        description,
+        mood,
+        tags,
+        difficulty,
+        timeSpent,
+        notes,
+        isAIGenerated,
+      });
+
+      await progress.save();
+      res
+        .status(201)
+        .json({ message: "Goal progress saved successfully", progress });
+    } catch (error) {
+      console.error("Save goal progress error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// Goal Related Journal Entries Routes
+app.get("/api/goals/:goalId/journals", authenticateToken, async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    console.log(
+      "Getting journals for goalId:",
+      goalId,
+      "userId:",
+      req.user?.userId
+    );
+
+    const journals = await JournalEntry.find({
+      userId: req.user.userId,
+      relatedGoalId: goalId,
+    }).sort({ date: -1 });
+
+    console.log("Found journals:", journals.length);
+    res.json(journals);
+  } catch (error) {
+    console.error("Get goal journals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// 임시 테스트용 API (인증 없음)
+app.get("/api/test/goals/:goalId/journals", async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    console.log("Test API - Getting journals for goalId:", goalId);
+
+    const journals = await JournalEntry.find({
+      relatedGoalId: goalId,
+    }).sort({ date: -1 });
+
+    console.log("Test API - Found journals:", journals.length);
+    res.json(journals);
+  } catch (error) {
+    console.error("Test API - Get goal journals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Test API - Get all journals (for debugging)
+app.get("/api/test/journals", async (req, res) => {
+  try {
+    const journals = await JournalEntry.find({}).sort({ date: -1 });
+    console.log("Test API - Found all journals:", journals.length);
+    res.json(journals);
+  } catch (error) {
+    console.error("Test API - Get all journals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Test API - Get all goals (for debugging)
+app.get("/api/test/goals", async (req, res) => {
+  try {
+    const goals = await Goal.find({}).sort({ createdAt: -1 });
+    console.log("Test API - Found all goals:", goals.length);
+    res.json(goals);
+  } catch (error) {
+    console.error("Test API - Get all goals error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Test API - Get all users (for debugging)
+app.get("/api/test/users", async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select("_id name email createdAt")
+      .sort({ createdAt: -1 });
+    console.log("Test API - Found all users:", users.length);
+    res.json(users);
+  } catch (error) {
+    console.error("Test API - Get all users error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Convert conversation to diary with goal mapping
+app.post("/api/convert-to-diary", authenticateToken, async (req, res) => {
+  try {
+    const { conversationText } = req.body;
+
+    if (!conversationText) {
+      return res.status(400).json({ error: "Conversation text is required" });
+    }
+
+    // Get user's goals structure
+    const goals = await Goal.find({ userId: req.user.userId });
+    const flattenedGoals = [];
+
+    goals.forEach((goal) => {
+      if (goal.mandalartData) {
+        // Main goal
+        flattenedGoals.push({
+          id: goal.mandalartData.id,
+          text: goal.mandalartData.text,
+          type: "main",
+          description: goal.mandalartData.description || "",
+          completed: goal.mandalartData.completed || false,
+        });
+
+        // Sub-goals
+        if (goal.mandalartData.subGoals) {
+          goal.mandalartData.subGoals.forEach((subGoal) => {
+            if (subGoal && subGoal.text) {
+              flattenedGoals.push({
+                id: subGoal.id,
+                text: subGoal.text,
+                type: "sub",
+                parentId: goal.mandalartData.id,
+                description: subGoal.description || "",
+                completed: subGoal.completed || false,
+              });
+
+              // Sub-sub-goals
+              if (subGoal.subGoals) {
+                subGoal.subGoals.forEach((subSubGoal) => {
+                  if (subSubGoal && subSubGoal.text) {
+                    flattenedGoals.push({
+                      id: subSubGoal.id,
+                      text: subSubGoal.text,
+                      type: "sub-sub",
+                      parentId: subGoal.id,
+                      grandParentId: goal.mandalartData.id,
+                      description: subSubGoal.description || "",
+                      completed: subSubGoal.completed || false,
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+    });
+
+    // Create goals context for GPT with clear hierarchy
+    const goalsContext = flattenedGoals
+      .map((goal) => {
+        let prefix = "";
+        if (goal.type === "main") prefix = "MAIN GOAL";
+        else if (goal.type === "sub") prefix = "  SUB GOAL";
+        else if (goal.type === "sub-sub") prefix = "    SUB-SUB GOAL";
+
+        return `${prefix}: "${goal.text}" (ID: ${goal.id})${
+          goal.description ? ` - ${goal.description}` : ""
+        }`;
+      })
+      .join("\n");
+
+    const systemPrompt = `You are a helpful assistant that converts conversations into personal diary entries and matches them to user goals.
+
+User's Goals (hierarchical structure):
+${goalsContext}
+
+IMPORTANT: When matching goals, prefer the most specific match. For example:
+- If the conversation is about "tennis", match the SUB-SUB GOAL "tennis" (not the SUB GOAL "exercise")
+- If the conversation is about "running", match the SUB-SUB GOAL "run" (not the SUB GOAL "exercise")
+- Only match the SUB GOAL if there's no specific SUB-SUB GOAL that fits
+
+IMPORTANT RULES:
+- ONLY use the actual conversation content provided below
+- DO NOT add, invent, or assume any information not mentioned in the conversation
+- DO NOT make up details, feelings, or experiences that weren't explicitly shared
+- Base the diary entry strictly on what the user actually said
+- Create a natural, flowing diary entry that feels personal and reflective
+- Use first person perspective ("I", "me", "my")
+- Make it sound like a real diary entry, not a formal report
+- Include the user's actual words and experiences naturally
+- If the conversation is brief, expand it thoughtfully while staying true to the content
+
+After creating the diary entry, analyze if it relates to any of the user's goals and return both the diary content and goal mapping.
+
+CRITICAL: You MUST respond with ONLY valid JSON. Do not include any text before or after the JSON.
+
+Your response must start with { and end with }. No other text allowed.
+
+Return your response in this exact JSON format:
+{
+  "diaryContent": "the diary entry content here",
+  "goalMapping": {
+    "relatedGoalId": "goal-id-if-found-or-null",
+    "relatedGoalType": "main-or-sub-or-sub-sub-or-null",
+    "confidence": 0.0-1.0,
+    "reason": "brief explanation of why this goal was matched or why no match was found"
+  }
+}
+
+WARNING: If you include any text before or after the JSON, the system will fail to parse your response.
+
+Only match goals if confidence is above 0.3. Be conservative - it's better to not match than to match incorrectly.`;
+
+    // Check if OpenAI API key is available
+    if (
+      !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY === "your_openai_api_key_here"
+    ) {
+      return res.status(500).json({
+        error:
+          "OpenAI API key not configured. Please contact the administrator to set up the API key.",
+      });
+    }
+
+    const response = await fetch(
+      process.env.OPENAI_API_URL ||
+        "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: conversationText },
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    console.log("GPT API response:", data);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error("Invalid GPT API response structure:", data);
+      return res.json({
+        diaryContent: `Dear Diary,\n\n${conversationText}\n\nYours truly,\n[User]`,
+        goalMapping: {
+          relatedGoalId: null,
+          relatedGoalType: null,
+          confidence: 0,
+          reason: "Invalid AI response structure",
+        },
+      });
+    }
+
+    const aiResponse = data.choices[0].message.content;
+    console.log("AI response content:", aiResponse);
+
+    try {
+      // Extract JSON from response if there's extra text
+      let jsonString = aiResponse.trim();
+
+      // Find JSON object in the response
+      const jsonStart = jsonString.indexOf("{");
+      const jsonEnd = jsonString.lastIndexOf("}");
+
+      if (jsonStart !== -1 && jsonEnd !== -1 && jsonEnd > jsonStart) {
+        jsonString = jsonString.substring(jsonStart, jsonEnd + 1);
+      }
+
+      const analysis = JSON.parse(jsonString);
+      console.log("Parsed analysis:", analysis);
+      res.json(analysis);
+    } catch (parseError) {
+      console.error("Failed to parse GPT response:", aiResponse);
+      res.json({
+        diaryContent: `Dear Diary,\n\n${conversationText}\n\nYours truly,\n[User]`,
+        goalMapping: {
+          relatedGoalId: null,
+          relatedGoalType: null,
+          confidence: 0,
+          reason: "Failed to parse AI analysis",
+        },
+      });
+    }
+  } catch (error) {
+    console.error("Convert to diary error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// GPT-based Goal Mapping API
+app.post("/api/analyze-goal-mapping", authenticateToken, async (req, res) => {
+  try {
+    const { diaryContent } = req.body;
+
+    if (!diaryContent) {
+      return res.status(400).json({ error: "Diary content is required" });
+    }
+
+    // Get all goals structure
+    const goals = await Goal.find({ userId: req.user.userId });
+    const flattenedGoals = [];
+
+    goals.forEach((goal) => {
+      if (goal.mandalartData) {
+        // Main goal
+        flattenedGoals.push({
+          id: goal.mandalartData.id,
+          text: goal.mandalartData.text,
+          type: "main",
+          description: goal.mandalartData.description || "",
+          completed: goal.mandalartData.completed || false,
+        });
+
+        // Sub-goals
+        if (goal.mandalartData.subGoals) {
+          goal.mandalartData.subGoals.forEach((subGoal) => {
+            if (subGoal && subGoal.text) {
+              flattenedGoals.push({
+                id: subGoal.id,
+                text: subGoal.text,
+                type: "sub",
+                parentId: goal.mandalartData.id,
+                description: subGoal.description || "",
+                completed: subGoal.completed || false,
+              });
+
+              // Sub-sub-goals
+              if (subGoal.subGoals) {
+                subGoal.subGoals.forEach((subSubGoal) => {
+                  if (subSubGoal && subSubGoal.text) {
+                    flattenedGoals.push({
+                      id: subSubGoal.id,
+                      text: subSubGoal.text,
+                      type: "sub-sub",
+                      parentId: subGoal.id,
+                      grandParentId: goal.mandalartData.id,
+                      description: subSubGoal.description || "",
+                      completed: subSubGoal.completed || false,
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+    });
+
+    if (flattenedGoals.length === 0) {
+      return res.json({
+        relatedGoalId: null,
+        relatedGoalType: null,
+        confidence: 0,
+        reason: "No goals found",
+      });
+    }
+
+    // Create goals context for GPT
+    const goalsContext = flattenedGoals
+      .map(
+        (goal) =>
+          `- ${goal.type.toUpperCase()}: "${goal.text}" (ID: ${goal.id})${
+            goal.description ? ` - ${goal.description}` : ""
+          }`
+      )
+      .join("\n");
+
+    const systemPrompt = `You are an AI assistant that analyzes diary entries and matches them to user goals.
+
+User's Goals:
+${goalsContext}
+
+Analyze the following diary content and determine if it relates to any of the user's goals. Consider:
+1. Direct mentions of goal topics
+2. Related activities or progress
+3. Emotional connections to goals
+4. Indirect references to goal themes
+
+Return your analysis in this exact JSON format:
+{
+  "relatedGoalId": "goal-id-if-found-or-null",
+  "relatedGoalType": "main-or-sub-or-sub-sub-or-null",
+  "confidence": 0.0-1.0,
+  "reason": "brief explanation of why this goal was matched or why no match was found"
+}
+
+Only match if confidence is above 0.3. Be conservative - it's better to not match than to match incorrectly.`;
+
+    // Check if OpenAI API key is available
+    if (
+      !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY === "your_openai_api_key_here"
+    ) {
+      return res.status(500).json({
+        error:
+          "OpenAI API key not configured. Please contact the administrator to set up the API key.",
+      });
+    }
+
+    const response = await fetch(
+      process.env.OPENAI_API_URL ||
+        "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: diaryContent },
+          ],
+          max_tokens: 300,
+          temperature: 0.3,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    console.log("GPT API response:", data);
+
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error("Invalid GPT API response structure:", data);
+      return res.json({
+        relatedGoalId: null,
+        relatedGoalType: null,
+        confidence: 0,
+        reason: "Invalid AI response structure",
+      });
+    }
+
+    const aiResponse = data.choices[0].message.content;
+    console.log("AI response content:", aiResponse);
+
+    try {
+      const analysis = JSON.parse(aiResponse);
+      console.log("Parsed analysis:", analysis);
+      res.json(analysis);
+    } catch (parseError) {
+      console.error("Failed to parse GPT response:", aiResponse);
+      res.json({
+        relatedGoalId: null,
+        relatedGoalType: null,
+        confidence: 0,
+        reason: "Failed to parse AI analysis",
+      });
+    }
+  } catch (error) {
+    console.error("Goal mapping analysis error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Chat Routes
+app.get("/api/chat", authenticateToken, async (req, res) => {
+  try {
+    const session = await ChatSession.findOne({ userId: req.user.userId }).sort(
+      { updatedAt: -1 }
+    );
+    res.json(session || { messages: [] });
+  } catch (error) {
+    console.error("Get chat session error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.post("/api/chat", authenticateToken, async (req, res) => {
+  try {
+    const { messages } = req.body;
+
+    let session = await ChatSession.findOne({ userId: req.user.userId });
+
+    if (session) {
+      session.messages = messages;
+      session.updatedAt = new Date();
+    } else {
+      session = new ChatSession({
+        userId: req.user.userId,
+        messages,
+      });
+    }
+
+    await session.save();
+    res.json({ message: "Chat session saved successfully", session });
+  } catch (error) {
+    console.error("Save chat session error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Get all goals with full structure for GPT analysis
+app.get("/api/goals/full-structure", authenticateToken, async (req, res) => {
+  try {
+    const goals = await Goal.find({ userId: req.user.userId });
+
+    // Flatten all goals and sub-goals for easier analysis
+    const flattenedGoals = [];
+
+    goals.forEach((goal) => {
+      if (goal.mandalartData) {
+        // Main goal
+        flattenedGoals.push({
+          id: goal.mandalartData.id,
+          text: goal.mandalartData.text,
+          type: "main",
+          description: goal.mandalartData.description || "",
+          completed: goal.mandalartData.completed || false,
+        });
+
+        // Sub-goals
+        if (goal.mandalartData.subGoals) {
+          goal.mandalartData.subGoals.forEach((subGoal) => {
+            if (subGoal && subGoal.text) {
+              flattenedGoals.push({
+                id: subGoal.id,
+                text: subGoal.text,
+                type: "sub",
+                parentId: goal.mandalartData.id,
+                description: subGoal.description || "",
+                completed: subGoal.completed || false,
+              });
+
+              // Sub-sub-goals
+              if (subGoal.subGoals) {
+                subGoal.subGoals.forEach((subSubGoal) => {
+                  if (subSubGoal && subSubGoal.text) {
+                    flattenedGoals.push({
+                      id: subSubGoal.id,
+                      text: subSubGoal.text,
+                      type: "sub-sub",
+                      parentId: subGoal.id,
+                      grandParentId: goal.mandalartData.id,
+                      description: subSubGoal.description || "",
+                      completed: subSubGoal.completed || false,
+                    });
+                  }
+                });
+              }
+            }
+          });
+        }
+      }
+    });
+
+    res.json(flattenedGoals);
+  } catch (error) {
+    console.error("Get full goals structure error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// AI assistant for goal suggestions (Mandalart)
+app.post("/api/goals/ai-suggestions", authenticateToken, async (req, res) => {
+  try {
+    const { description, dueDate } = req.body;
+
+    if (!description || !description.trim()) {
+      return res
+        .status(400)
+        .json({ error: "Goal description is required for AI suggestions." });
+    }
+
+    if (
+      !process.env.OPENAI_API_KEY ||
+      process.env.OPENAI_API_KEY === "your_openai_api_key_here"
+    ) {
+      return res.status(500).json({
+        error:
+          "OpenAI API key not configured. Please contact the administrator to set up the API key.",
+      });
+    }
+
+    const systemPrompt = `You are a personal goal-setting coach specializing in the Mandalart method. A Mandalart breaks a main goal into 8 primary objectives, and each primary objective into 8 secondary objectives.
+
+The user will provide a goal description. Your task is to:
+1. Rephrase the user's goal into a clear, concise main goal for the central square.
+2. Suggest 8 distinct, actionable primary objectives that directly contribute to the main goal.
+3. Format your response clearly, with the main goal first, followed by the 8 primary objectives. Use bullet points for objectives.`;
+
+    const userPrompt = `Help me break down this goal into a Mandalart: "${description.trim()}"${
+      dueDate
+        ? ` with a due date of ${new Date(dueDate).toLocaleDateString()}`
+        : ""
+    }`;
+
+    const response = await fetch(
+      process.env.OPENAI_API_URL ||
+        "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
+          max_tokens: 800,
+          temperature: 0.7,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error("Goal suggestion API failed:", response.status, response.statusText);
+      return res
+        .status(500)
+        .json({ error: "Failed to generate AI goal suggestions." });
+    }
+
+    const data = await response.json();
+    const suggestion = data?.choices?.[0]?.message?.content;
+
+    if (!suggestion) {
+      return res
+        .status(500)
+        .json({ error: "AI did not return a suggestion. Please try again." });
+    }
+
+    res.json({ suggestion });
+  } catch (error) {
+    console.error("Goal AI suggestion error:", error);
+    res
+      .status(500)
+      .json({ error: "Internal server error while generating suggestions." });
+  }
+});
+
+// Enhanced Chat API with goal context
+app.post("/api/chat/enhanced", authenticateToken, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    // Get user's goals and recent progress for context
+    const goals = await Goal.find({ userId: req.user.userId });
+    const recentProgress = await GoalProgress.find({
+      userId: req.user.userId,
+    })
+      .sort({ date: -1 })
+      .limit(5);
+
+    // Build goal context with progress information
+    let goalContext = "";
+    if (goals.length > 0) {
+      goalContext = "\n\nUser's current goals and recent progress:\n";
+      for (const goal of goals) {
+        goalContext += `- Main Goal: ${goal.mandalartData.text}\n`;
+        if (goal.mandalartData.completed) {
+          goalContext += `  ✅ COMPLETED!\n`;
+        }
+
+        // Get recent progress for this goal
+        const goalProgress = recentProgress.filter(
+          (p) => p.goalId === goal.mandalartData.id
+        );
+        if (goalProgress.length > 0) {
+          goalContext += `  Recent progress:\n`;
+          goalProgress.slice(0, 3).forEach((progress) => {
+            goalContext += `    • ${
+              progress.title
+            } (${progress.date.toLocaleDateString()})\n`;
+          });
+        }
+
+        // Check sub-goals
+        if (Array.isArray(goal.mandalartData.subGoals)) {
+          const validSubGoals = goal.mandalartData.subGoals.filter(
+            (sg) => sg && sg.text
+          );
+          if (validSubGoals.length > 0) {
+            const completedSubGoals = validSubGoals.filter(
+              (sg) => sg.completed
+            ).length;
+            goalContext += `  Sub-goals progress: ${completedSubGoals}/${validSubGoals.length} completed\n`;
+          }
+        }
+        goalContext += "\n";
+      }
+    }
+
+    const systemPrompt = `You are a helpful and supportive AI assistant for a personal reflection and goal-setting app called Reflecta. 
+    Your role is to help users reflect on their thoughts, feelings, and experiences, and provide gentle guidance for personal growth.
+    Be empathetic, encouraging, and non-judgmental. Ask thoughtful questions to help users explore their thoughts more deeply.
+    Keep responses concise but meaningful.
+    
+    IMPORTANT: When users mention progress or achievements related to their goals, celebrate their success! 
+    Acknowledge their hard work and encourage them to continue. If they've completed goals or made significant progress, 
+    be enthusiastic and supportive.${goalContext}`;
+
+    const response = await fetch(
+      process.env.OPENAI_API_URL ||
+        "https://api.openai.com/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: message },
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        }),
+      }
+    );
+
+    const data = await response.json();
+    const aiMessage = data.choices[0].message.content;
+
+    // Save to chat session
+    let session = await ChatSession.findOne({ userId: req.user.userId });
+    if (!session) {
+      session = new ChatSession({ userId: req.user.userId, messages: [] });
+    }
+
+    session.messages.push(
+      {
+        id: `user-${Date.now()}`,
+        text: message,
+        sender: "user",
+        timestamp: new Date(),
+      },
+      {
+        id: `bot-${Date.now()}`,
+        text: aiMessage,
+        sender: "bot",
+        timestamp: new Date(),
+      }
+    );
+
+    await session.save();
+
+    res.json({ message: aiMessage });
+  } catch (error) {
+    console.error("Enhanced chat error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: "Something went wrong!" });
+});
+
+// 404 handler
+app.use("*", (req, res) => {
+  res.status(404).json({ error: "Route not found" });
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

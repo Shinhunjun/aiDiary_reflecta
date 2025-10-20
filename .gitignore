@@ -1,0 +1,26 @@
+# Vercel
+.vercel
+
+# Python virtual environment
+bin/
+include/
+lib/
+pyvenv.cfg
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Frontend
+reflecta-frontend/node_modules/
+reflecta-frontend/build/
+reflecta-frontend/.env
+reflecta-frontend/.env.local
+
+# Backend
+reflecta-backend/node_modules/
+reflecta-backend/.env
+reflecta-backend/.env.local
+reflecta-backend/.env.backup
