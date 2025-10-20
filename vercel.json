@@ -1,6 +1,5 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": "build",
-  "installCommand": "npm install",
-  "framework": "create-react-app"
+  "buildCommand": "cd reflecta-frontend && npm install && npm run build",
+  "outputDirectory": "reflecta-frontend/build",
+  "installCommand": "npm install --prefix reflecta-frontend"
 }
