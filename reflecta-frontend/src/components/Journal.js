@@ -18,7 +18,6 @@ const Journal = () => {
     tags: [],
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [selectedEntry, setSelectedEntry] = useState(null);
 
   // Load journal entries from API
@@ -26,7 +25,6 @@ const Journal = () => {
     if (!user?.id) return;
 
     try {
-      setIsLoading(true);
       const entries = await apiService.getJournalEntries();
       updateJournalEntries(entries);
     } catch (error) {
@@ -45,8 +43,6 @@ const Journal = () => {
       const allEntries = [...userEntries, ...userAiEntries];
       allEntries.sort((a, b) => new Date(b.date) - new Date(a.date));
       updateJournalEntries(allEntries);
-    } finally {
-      setIsLoading(false);
     }
   }, [user?.id, updateJournalEntries]);
 

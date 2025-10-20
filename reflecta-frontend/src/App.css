@@ -34,9 +34,17 @@ body {
   transition: margin-left 0.3s ease;
 }
 
+.main-content.sidebar-collapsed {
+  margin-left: 70px;
+}
+
 /* Responsive design for sidebar */
 @media (max-width: 768px) {
   .main-content {
+    margin-left: 70px;
+  }
+
+  .main-content.sidebar-collapsed {
     margin-left: 70px;
   }
 }

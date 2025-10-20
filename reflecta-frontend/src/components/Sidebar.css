@@ -10,11 +10,65 @@
   flex-direction: column;
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
   z-index: 1000;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed {
+  width: 70px;
+}
+
+.sidebar.collapsed .sidebar-logo {
+  font-size: 1.25rem;
+}
+
+.sidebar.collapsed .sidebar-label {
+  display: none;
+}
+
+.sidebar.collapsed .user-details {
+  display: none;
+}
+
+.sidebar.collapsed .user-info-sidebar {
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.sidebar.collapsed .user-avatar {
+  width: 35px;
+  height: 35px;
+  font-size: 1rem;
+}
+
+.sidebar.collapsed .logout-btn,
+.sidebar.collapsed .login-btn,
+.sidebar.collapsed .signup-btn {
+  font-size: 0.7rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.sidebar.collapsed .auth-buttons {
+  gap: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-link {
+  padding: 1rem 0.5rem;
+  flex-direction: column;
+  gap: 0.25rem;
+  text-align: center;
+}
+
+.sidebar.collapsed .lock-icon {
+  margin-left: 0;
+  margin-top: 0.25rem;
 }
 
 .sidebar-header {
   padding: 2rem 1.5rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .sidebar-logo {
@@ -23,6 +77,38 @@
   margin: 0;
   color: white;
   text-align: center;
+  transition: all 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 2rem 0.5rem;
+}
+
+.toggle-btn {
+  position: absolute;
+  right: -15px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  width: 30px;
+  height: 60px;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 1001;
+}
+
+.toggle-btn:hover {
+  background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+  width: 35px;
+  box-shadow: 3px 0 15px rgba(0, 0, 0, 0.3);
 }
 
 .sidebar-nav {
@@ -55,6 +141,23 @@
   color: white;
   border-left-color: white;
   font-weight: 600;
+}
+
+.sidebar-link.locked {
+  opacity: 0.6;
+  cursor: pointer;
+  position: relative;
+}
+
+.sidebar-link.locked:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  opacity: 1;
+}
+
+.lock-icon {
+  font-size: 0.9rem;
+  margin-left: auto;
 }
 
 .sidebar-icon {
@@ -135,6 +238,47 @@
   transform: translateY(-2px);
 }
 
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.login-btn,
+.signup-btn {
+  width: 100%;
+  padding: 0.75rem;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.login-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.login-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.signup-btn {
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.signup-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .sidebar {
@@ -184,8 +328,14 @@
     display: none;
   }
 
-  .logout-btn {
+  .logout-btn,
+  .login-btn,
+  .signup-btn {
     font-size: 0.7rem;
     padding: 0.5rem 0.25rem;
+  }
+
+  .auth-buttons {
+    gap: 0.5rem;
   }
 }

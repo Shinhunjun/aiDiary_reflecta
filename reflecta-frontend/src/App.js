@@ -4,9 +4,14 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { JournalProvider } from "./contexts/JournalContext";
+import { SidebarProvider, useSidebar } from "./contexts/SidebarContext";
 import Login from "./components/Login";
 import Signup from "./components/Signup";
 import Dashboard from "./components/Dashboard";
@@ -17,12 +22,40 @@ import ProgressTracking from "./components/ProgressTracking";
 import Sidebar from "./components/Sidebar";
 import "./App.css";
 
+// 로딩 애니메이션 컴포넌트
+const LoadingSpinner = () => (
+  <motion.div
+    className="loading"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+  >
+    <motion.div
+      animate={{
+        rotate: 360,
+      }}
+      transition={{
+        duration: 1,
+        repeat: Infinity,
+        ease: "linear",
+      }}
+      style={{
+        width: "40px",
+        height: "40px",
+        border: "4px solid rgba(99, 102, 241, 0.3)",
+        borderTopColor: "#6366f1",
+        borderRadius: "50%",
+      }}
+    />
+  </motion.div>
+);
+
 // 보호된 라우트 컴포넌트
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   return isAuthenticated ? children : <Navigate to="/login" />;
@@ -33,74 +66,139 @@ const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    return <div className="loading">Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   return isAuthenticated ? <Navigate to="/" /> : children;
+};
+
+const AnimatedRoute = ({ children }) => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div
+        key={location.pathname}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.3 }}
+      >
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+};
+
+const MainContent = () => {
+  const { isCollapsed } = useSidebar();
+  const location = useLocation();
+
+  return (
+    <div className={`main-content ${isCollapsed ? "sidebar-collapsed" : ""}`}>
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route
+            path="/"
+            element={
+              <AnimatedRoute>
+                <Home />
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/login"
+            element={
+              <AnimatedRoute>
+                <PublicRoute>
+                  <Login />
+                </PublicRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/signup"
+            element={
+              <AnimatedRoute>
+                <PublicRoute>
+                  <Signup />
+                </PublicRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/journal"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <Journal />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/goal-setting"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <GoalSetting />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/progress"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <ProgressTracking />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+        </Routes>
+      </AnimatePresence>
+    </div>
+  );
 };
 
 function App() {
   return (
     <AuthProvider>
       <JournalProvider>
-        <Router>
-          <div className="app-container">
-            <Sidebar />
-            <div className="main-content">
-              <Routes>
-                <Route path="/" element={<Home />} />
-                <Route
-                  path="/login"
-                  element={
-                    <PublicRoute>
-                      <Login />
-                    </PublicRoute>
-                  }
-                />
-                <Route
-                  path="/signup"
-                  element={
-                    <PublicRoute>
-                      <Signup />
-                    </PublicRoute>
-                  }
-                />
-                <Route
-                  path="/dashboard"
-                  element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/journal"
-                  element={
-                    <ProtectedRoute>
-                      <Journal />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/goal-setting"
-                  element={
-                    <ProtectedRoute>
-                      <GoalSetting />
-                    </ProtectedRoute>
-                  }
-                />
-                <Route
-                  path="/progress"
-                  element={
-                    <ProtectedRoute>
-                      <ProgressTracking />
-                    </ProtectedRoute>
-                  }
-                />
-              </Routes>
+        <SidebarProvider>
+          <Router>
+            <div className="app-container">
+              <Sidebar />
+              <MainContent />
+              <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="dark"
+                style={{
+                  zIndex: 9999,
+                }}
+              />
             </div>
-          </div>
-        </Router>
+          </Router>
+        </SidebarProvider>
       </JournalProvider>
     </AuthProvider>
   );

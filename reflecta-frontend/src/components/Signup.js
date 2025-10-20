@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
 import { useAuth } from "../contexts/AuthContext";
 import "./Auth.css";
 
@@ -64,11 +65,28 @@ const Signup = () => {
 
   return (
     <div className="auth-container">
-      <div className="auth-title">Reflecta</div>
-      <div className="auth-form">
+      <motion.div
+        className="auth-title"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: 0.2 }}
+      >
+        Reflecta
+      </motion.div>
+      <motion.div
+        className="auth-form"
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6, delay: 0.4 }}
+      >
         <h2>Sign Up</h2>
         <form onSubmit={handleSubmit}>
-          <div className="form-group">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.6 }}
+          >
             <label htmlFor="name">Name</label>
             <input
               type="text"
@@ -79,9 +97,14 @@ const Signup = () => {
               required
               placeholder="Enter your name"
             />
-          </div>
+          </motion.div>
 
-          <div className="form-group">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.7 }}
+          >
             <label htmlFor="email">Email</label>
             <input
               type="email"
@@ -92,9 +115,14 @@ const Signup = () => {
               required
               placeholder="Enter your email"
             />
-          </div>
+          </motion.div>
 
-          <div className="form-group">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.8 }}
+          >
             <label htmlFor="password">Password</label>
             <input
               type="password"
@@ -106,9 +134,14 @@ const Signup = () => {
               placeholder="Enter your password"
               minLength="6"
             />
-          </div>
+          </motion.div>
 
-          <div className="form-group">
+          <motion.div
+            className="form-group"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, delay: 0.9 }}
+          >
             <label htmlFor="confirmPassword">Confirm Password</label>
             <input
               type="password"
@@ -120,19 +153,42 @@ const Signup = () => {
               placeholder="Confirm your password"
               minLength="6"
             />
-          </div>
+          </motion.div>
 
-          {error && <div className="error-message">{error}</div>}
+          {error && (
+            <motion.div
+              className="error-message"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              {error}
+            </motion.div>
+          )}
 
-          <button type="submit" className="auth-button" disabled={loading}>
+          <motion.button
+            type="submit"
+            className="auth-button"
+            disabled={loading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 1.0 }}
+          >
             {loading ? "Signing up..." : "Sign Up"}
-          </button>
+          </motion.button>
         </form>
 
-        <div className="auth-link">
+        <motion.div
+          className="auth-link"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 1.1 }}
+        >
           Already have an account? <Link to="/login">Login</Link>
-        </div>
-      </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };
