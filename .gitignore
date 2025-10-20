@@ -24,3 +24,4 @@ reflecta-backend/node_modules/
 reflecta-backend/.env
 reflecta-backend/.env.local
 reflecta-backend/.env.backup
+reflecta-backend/.env.yaml
