@@ -103,30 +103,7 @@ const Signup = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
       >
-        <h2>{isCounselorMode ? "Counselor Sign Up" : "Sign Up"}</h2>
-
-        <motion.div
-          className="form-group"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.4, delay: 0.5 }}
-          style={{ marginBottom: "20px" }}
-        >
-          <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={isCounselorMode}
-              onChange={(e) => {
-                setIsCounselorMode(e.target.checked);
-                if (!e.target.checked) {
-                  setFormData({ ...formData, secretCode: "" });
-                }
-              }}
-              style={{ marginRight: "10px" }}
-            />
-            <span>I am a counselor</span>
-          </label>
-        </motion.div>
+        <h2>Sign Up</h2>
 
         <form onSubmit={handleSubmit}>
           <motion.div
@@ -258,6 +235,44 @@ const Signup = () => {
           transition={{ duration: 0.4, delay: 1.1 }}
         >
           Already have an account? <Link to="/login">Login</Link>
+        </motion.div>
+
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.4, delay: 1.2 }}
+          style={{
+            marginTop: "15px",
+            paddingTop: "15px",
+            borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+            textAlign: "center"
+          }}
+        >
+          <label
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              cursor: "pointer",
+              fontSize: "0.9em",
+              color: "#b8b8b8"
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={isCounselorMode}
+              onChange={(e) => {
+                setIsCounselorMode(e.target.checked);
+                if (!e.target.checked) {
+                  setFormData({ ...formData, secretCode: "" });
+                }
+              }}
+              style={{
+                marginRight: "8px",
+                cursor: "pointer"
+              }}
+            />
+            <span style={{ whiteSpace: "nowrap" }}>I am a counselor</span>
+          </label>
         </motion.div>
       </motion.div>
     </div>
