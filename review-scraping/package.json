@@ -1,0 +1,28 @@
+{
+  "name": "mental-health-review-scraper",
+  "version": "1.0.0",
+  "description": "Google Maps review scraper for mental health counseling centers",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "scrape": "node src/scraper.js",
+    "analyze": "node src/analyzer.js",
+    "analyze:mhard": "python3 src/mhard_analyzer.py",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "google-maps",
+    "review-scraper",
+    "mental-health",
+    "text-analysis"
+  ],
+  "dependencies": {
+    "playwright": "^1.40.0",
+    "dotenv": "^16.3.1",
+    "csv-writer": "^1.6.0",
+    "csv-parse": "^5.5.3"
+  },
+  "devDependencies": {
+    "prettier": "^3.1.0"
+  }
+}
