@@ -10,11 +10,13 @@ const Signup = () => {
     email: "",
     password: "",
     confirmPassword: "",
+    secretCode: "",
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isCounselorMode, setIsCounselorMode] = useState(false);
   const navigate = useNavigate();
-  const { register } = useAuth();
+  const { register, registerCounselor } = useAuth();
 
   const handleChange = (e) => {
     setFormData({
@@ -43,15 +45,37 @@ const Signup = () => {
       return;
     }
 
+    // Secret code validation for counselor mode
+    if (isCounselorMode && !formData.secretCode.trim()) {
+      setError("Secret code is required for counselor registration.");
+      setLoading(false);
+      return;
+    }
+
     try {
-      const result = await register({
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-      });
+      let result;
+
+      if (isCounselorMode) {
+        result = await registerCounselor({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          secretCode: formData.secretCode,
+        });
+      } else {
+        result = await register({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        });
+      }
 
       if (result.success) {
-        alert("Sign up completed successfully!");
+        alert(
+          isCounselorMode
+            ? "Counselor account created successfully!"
+            : "Sign up completed successfully!"
+        );
         navigate("/");
       } else {
         setError(result.error || "Sign up failed. Please try again.");
@@ -79,7 +103,31 @@ const Signup = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.4 }}
       >
-        <h2>Sign Up</h2>
+        <h2>{isCounselorMode ? "Counselor Sign Up" : "Sign Up"}</h2>
+
+        <motion.div
+          className="form-group"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+          style={{ marginBottom: "20px" }}
+        >
+          <label style={{ display: "flex", alignItems: "center", cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={isCounselorMode}
+              onChange={(e) => {
+                setIsCounselorMode(e.target.checked);
+                if (!e.target.checked) {
+                  setFormData({ ...formData, secretCode: "" });
+                }
+              }}
+              style={{ marginRight: "10px" }}
+            />
+            <span>I am a counselor</span>
+          </label>
+        </motion.div>
+
         <form onSubmit={handleSubmit}>
           <motion.div
             className="form-group"
@@ -154,6 +202,29 @@ const Signup = () => {
               minLength="6"
             />
           </motion.div>
+
+          {isCounselorMode && (
+            <motion.div
+              className="form-group"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.4, delay: 1.0 }}
+            >
+              <label htmlFor="secretCode">Secret Code</label>
+              <input
+                type="password"
+                id="secretCode"
+                name="secretCode"
+                value={formData.secretCode}
+                onChange={handleChange}
+                required={isCounselorMode}
+                placeholder="Enter counselor secret code"
+              />
+              <small style={{ color: "#888", fontSize: "0.85em", marginTop: "5px", display: "block" }}>
+                Contact your administrator to obtain the secret code
+              </small>
+            </motion.div>
+          )}
 
           {error && (
             <motion.div

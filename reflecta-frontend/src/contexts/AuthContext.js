@@ -44,6 +44,7 @@ export const AuthProvider = ({ children }) => {
         id: response.user.id,
         email: response.user.email,
         name: response.user.name,
+        role: response.user.role || "student",
       };
       console.log("AuthContext - userData to set:", userData);
       setUser(userData);
@@ -62,12 +63,31 @@ export const AuthProvider = ({ children }) => {
         id: response.user.id,
         email: response.user.email,
         name: response.user.name,
+        role: response.user.role || "student",
       };
       setUser(user);
       localStorage.setItem("currentUser", JSON.stringify(user));
       return { success: true, user };
     } catch (error) {
       console.error("Registration error:", error);
+      return { success: false, error: error.message };
+    }
+  };
+
+  const registerCounselor = async (userData) => {
+    try {
+      const response = await apiService.registerCounselor(userData);
+      const user = {
+        id: response.user.id,
+        email: response.user.email,
+        name: response.user.name,
+        role: response.user.role || "counselor",
+      };
+      setUser(user);
+      localStorage.setItem("currentUser", JSON.stringify(user));
+      return { success: true, user };
+    } catch (error) {
+      console.error("Counselor registration error:", error);
       return { success: false, error: error.message };
     }
   };
@@ -82,6 +102,7 @@ export const AuthProvider = ({ children }) => {
     user,
     login,
     register,
+    registerCounselor,
     logout,
     loading,
     isAuthenticated: !!user,

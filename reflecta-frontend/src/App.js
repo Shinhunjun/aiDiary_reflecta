@@ -63,6 +63,25 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" />;
 };
 
+// Counselor 전용 라우트 컴포넌트
+const CounselorRoute = ({ children }) => {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (user?.role !== "counselor") {
+    return <Navigate to="/" />;
+  }
+
+  return children;
+};
+
 // 공개 라우트 컴포넌트 (로그인된 사용자는 대시보드로 리다이렉트)
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
@@ -182,9 +201,9 @@ const MainContent = () => {
             path="/counselor-dashboard"
             element={
               <AnimatedRoute>
-                <ProtectedRoute>
+                <CounselorRoute>
                   <CounselorDashboard />
-                </ProtectedRoute>
+                </CounselorRoute>
               </AnimatedRoute>
             }
           />

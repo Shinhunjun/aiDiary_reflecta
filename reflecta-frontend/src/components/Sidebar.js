@@ -154,17 +154,19 @@ const Sidebar = () => {
               </NavLink>
             </motion.div>
 
-            <motion.div variants={linkVariants} whileHover="hover">
-              <NavLink
-                to="/counselor-dashboard"
-                className={({ isActive }) =>
-                  `sidebar-link ${isActive ? "active" : ""}`
-                }
-              >
-                <span className="sidebar-icon">👥</span>
-                <span className="sidebar-label">Counselor</span>
-              </NavLink>
-            </motion.div>
+            {user?.role === "counselor" && (
+              <motion.div variants={linkVariants} whileHover="hover">
+                <NavLink
+                  to="/counselor-dashboard"
+                  className={({ isActive }) =>
+                    `sidebar-link ${isActive ? "active" : ""}`
+                  }
+                >
+                  <span className="sidebar-icon">👥</span>
+                  <span className="sidebar-label">Counselor</span>
+                </NavLink>
+              </motion.div>
+            )}
           </>
         ) : (
           <>
@@ -237,7 +239,14 @@ const Sidebar = () => {
                     exit={{ opacity: 0, width: 0 }}
                     transition={{ duration: 0.2 }}
                   >
-                    <div className="user-name">{user?.name || "User"}</div>
+                    <div className="user-name">
+                      {user?.name || "User"}
+                      {user?.role === "counselor" && (
+                        <span style={{ marginLeft: "5px", fontSize: "0.8em", color: "#6366f1" }}>
+                          👨‍⚕️
+                        </span>
+                      )}
+                    </div>
                     <div className="user-email">{user?.email}</div>
                   </motion.div>
                 )}

@@ -65,6 +65,19 @@ class ApiService {
     return response;
   }
 
+  async registerCounselor(userData) {
+    const response = await this.request("/auth/register-counselor", {
+      method: "POST",
+      body: JSON.stringify(userData),
+    });
+
+    if (response.token) {
+      this.setToken(response.token);
+    }
+
+    return response;
+  }
+
   async login(credentials) {
     const response = await this.request("/auth/login", {
       method: "POST",
