@@ -13,6 +13,11 @@ pyvenv.cfg
 # OS
 .DS_Store
 
+# Root level dependencies
+node_modules/
+package-lock.json
+share/
+
 # Frontend
 reflecta-frontend/node_modules/
 reflecta-frontend/build/
