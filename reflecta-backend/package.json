@@ -9,18 +9,24 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^8.0.3",
-    "cors": "^2.8.5",
+    "axios": "^1.12.2",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "express-validator": "^7.0.1"
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
   },
-  "keywords": ["reflecta", "api", "mongodb", "express"],
+  "keywords": [
+    "reflecta",
+    "api",
+    "mongodb",
+    "express"
+  ],
   "author": "Reflecta Team",
   "license": "MIT"
 }

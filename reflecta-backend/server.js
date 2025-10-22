@@ -93,6 +93,11 @@ const Goal = require("./models/Goal");
 const JournalEntry = require("./models/JournalEntry");
 const ChatSession = require("./models/ChatSession");
 const GoalProgress = require("./models/GoalProgress");
+const RiskAlert = require("./models/RiskAlert");
+
+// Middleware and Services
+const { requireRole, canAccessStudent, canModifyAlert } = require("./middleware/authorization");
+const riskDetectionService = require("./services/riskDetectionService");
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -1684,6 +1689,464 @@ app.get(
     } catch (error) {
       console.error("Chart data error:", error);
       res.status(500).json({ error: "Failed to generate chart data" });
+    }
+  }
+);
+
+// ============================================================================
+// PRIVACY SETTINGS & COUNSELOR DASHBOARD ENDPOINTS
+// ============================================================================
+
+// Get current user's privacy settings
+app.get("/api/privacy-settings", authenticateToken, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId).select("privacySettings role");
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.json({
+      privacySettings: user.privacySettings || {},
+      role: user.role,
+    });
+  } catch (error) {
+    console.error("Privacy settings fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch privacy settings" });
+  }
+});
+
+// Update privacy settings (students only)
+app.put("/api/privacy-settings", authenticateToken, async (req, res) => {
+  try {
+    const { riskMonitoring, assignedCounselors } = req.body;
+
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Only students can update privacy settings
+    if (user.role !== "student") {
+      return res.status(403).json({
+        error: "Only students can update privacy settings",
+      });
+    }
+
+    // Update privacy settings
+    if (riskMonitoring !== undefined) {
+      user.privacySettings = user.privacySettings || {};
+      user.privacySettings.riskMonitoring = {
+        enabled: riskMonitoring.enabled,
+        shareLevel: riskMonitoring.shareLevel || "summary",
+        consentDate: riskMonitoring.enabled ? new Date() : user.privacySettings.riskMonitoring?.consentDate,
+      };
+    }
+
+    if (assignedCounselors !== undefined) {
+      user.privacySettings = user.privacySettings || {};
+      user.privacySettings.assignedCounselors = assignedCounselors;
+    }
+
+    await user.save();
+
+    res.json({
+      message: "Privacy settings updated successfully",
+      privacySettings: user.privacySettings,
+    });
+  } catch (error) {
+    console.error("Privacy settings update error:", error);
+    res.status(500).json({ error: "Failed to update privacy settings" });
+  }
+});
+
+// Get list of available counselors (for student to select)
+app.get("/api/counselors", authenticateToken, async (req, res) => {
+  try {
+    const counselors = await User.find({ role: "counselor" })
+      .select("name email counselorProfile")
+      .lean();
+
+    res.json({ counselors });
+  } catch (error) {
+    console.error("Counselors fetch error:", error);
+    res.status(500).json({ error: "Failed to fetch counselors" });
+  }
+});
+
+// Get risk alerts for counselor dashboard
+app.get(
+  "/api/counselor/alerts",
+  authenticateToken,
+  requireRole("counselor"),
+  async (req, res) => {
+    try {
+      const counselorId = req.user.userId;
+      const { status, riskLevel, limit = 50, offset = 0 } = req.query;
+
+      // Build query
+      const query = {
+        "assignedCounselors.counselorId": counselorId,
+      };
+
+      if (status) {
+        query.status = status;
+      }
+
+      if (riskLevel) {
+        query.riskLevel = riskLevel;
+      }
+
+      // Fetch alerts
+      const alerts = await RiskAlert.find(query)
+        .populate("studentId", "name email studentProfile")
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .skip(parseInt(offset))
+        .lean();
+
+      // Get total count
+      const total = await RiskAlert.countDocuments(query);
+
+      // Get statistics
+      const stats = await RiskAlert.aggregate([
+        {
+          $match: {
+            "assignedCounselors.counselorId": new mongoose.Types.ObjectId(counselorId),
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            new: {
+              $sum: { $cond: [{ $eq: ["$status", "new"] }, 1, 0] },
+            },
+            critical: {
+              $sum: { $cond: [{ $eq: ["$riskLevel", "critical"] }, 1, 0] },
+            },
+            high: {
+              $sum: { $cond: [{ $eq: ["$riskLevel", "high"] }, 1, 0] },
+            },
+            medium: {
+              $sum: { $cond: [{ $eq: ["$riskLevel", "medium"] }, 1, 0] },
+            },
+            low: {
+              $sum: { $cond: [{ $eq: ["$riskLevel", "low"] }, 1, 0] },
+            },
+          },
+        },
+      ]);
+
+      res.json({
+        alerts,
+        pagination: {
+          total,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+        },
+        stats: stats[0] || {
+          total: 0,
+          new: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+        },
+      });
+    } catch (error) {
+      console.error("Counselor alerts fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  }
+);
+
+// Get specific alert details
+app.get(
+  "/api/counselor/alerts/:alertId",
+  authenticateToken,
+  requireRole("counselor"),
+  async (req, res) => {
+    try {
+      const { alertId } = req.params;
+      const counselorId = req.user.userId;
+
+      const alert = await RiskAlert.findOne({
+        _id: alertId,
+        "assignedCounselors.counselorId": counselorId,
+      })
+        .populate("studentId", "name email studentProfile")
+        .populate("assignedCounselors.counselorId", "name email")
+        .populate("counselorNotes.counselorId", "name")
+        .lean();
+
+      if (!alert) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+
+      res.json({ alert });
+    } catch (error) {
+      console.error("Alert fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch alert" });
+    }
+  }
+);
+
+// Update alert status
+app.patch(
+  "/api/counselor/alerts/:alertId/status",
+  authenticateToken,
+  requireRole("counselor"),
+  canModifyAlert,
+  async (req, res) => {
+    try {
+      const { status, followUpDate } = req.body;
+
+      const alert = req.alert;
+
+      if (status) {
+        alert.status = status;
+      }
+
+      if (followUpDate) {
+        alert.followUpDate = new Date(followUpDate);
+      }
+
+      if (status === "resolved") {
+        alert.resolvedAt = new Date();
+      }
+
+      await alert.save();
+
+      res.json({
+        message: "Alert status updated",
+        alert,
+      });
+    } catch (error) {
+      console.error("Alert status update error:", error);
+      res.status(500).json({ error: "Failed to update alert status" });
+    }
+  }
+);
+
+// Add counselor note to alert
+app.post(
+  "/api/counselor/alerts/:alertId/notes",
+  authenticateToken,
+  requireRole("counselor"),
+  canModifyAlert,
+  async (req, res) => {
+    try {
+      const { note, action } = req.body;
+
+      if (!note) {
+        return res.status(400).json({ error: "Note is required" });
+      }
+
+      const alert = req.alert;
+
+      alert.counselorNotes.push({
+        counselorId: req.user.userId,
+        note,
+        action,
+        createdAt: new Date(),
+      });
+
+      await alert.save();
+
+      res.json({
+        message: "Note added successfully",
+        alert,
+      });
+    } catch (error) {
+      console.error("Add note error:", error);
+      res.status(500).json({ error: "Failed to add note" });
+    }
+  }
+);
+
+// Get student overview for counselor (with privacy filtering)
+app.get(
+  "/api/counselor/students/:studentId",
+  authenticateToken,
+  requireRole("counselor"),
+  canAccessStudent,
+  async (req, res) => {
+    try {
+      const { studentId } = req.params;
+      const shareLevel = req.student.shareLevel;
+
+      // Fetch student info
+      const student = await User.findById(studentId)
+        .select("name email studentProfile createdAt")
+        .lean();
+
+      // Fetch recent alerts
+      const recentAlerts = await RiskAlert.find({
+        studentId,
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .lean();
+
+      // Fetch mood trend (last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      let moodTrend = null;
+      let journalCount = 0;
+
+      if (shareLevel === "moderate" || shareLevel === "detailed") {
+        const journals = await JournalEntry.find({
+          userId: studentId,
+          date: { $gte: thirtyDaysAgo },
+        })
+          .select("mood date")
+          .sort({ date: 1 })
+          .lean();
+
+        journalCount = journals.length;
+
+        // Calculate mood trend
+        const moodScores = {
+          happy: 5,
+          excited: 5,
+          grateful: 4,
+          calm: 4,
+          neutral: 3,
+          reflective: 3,
+          anxious: 2,
+          sad: 1,
+        };
+
+        const scores = journals.map((j) => moodScores[j.mood] || 3);
+        const avgScore = scores.length > 0
+          ? scores.reduce((a, b) => a + b, 0) / scores.length
+          : null;
+
+        moodTrend = {
+          averageScore: avgScore,
+          totalEntries: journals.length,
+          moodDistribution: journals.reduce((acc, j) => {
+            acc[j.mood] = (acc[j.mood] || 0) + 1;
+            return acc;
+          }, {}),
+        };
+      }
+
+      // Response based on share level
+      const response = {
+        student,
+        alerts: {
+          recent: recentAlerts.map((alert) => ({
+            id: alert._id,
+            riskLevel: alert.riskLevel,
+            status: alert.status,
+            createdAt: alert.createdAt,
+            summary:
+              shareLevel === "summary"
+                ? alert.aiAnalysis.summary
+                : shareLevel === "moderate"
+                ? alert.aiAnalysis.summary
+                : alert.aiAnalysis,
+          })),
+          total: recentAlerts.length,
+        },
+        shareLevel,
+      };
+
+      if (shareLevel === "moderate" || shareLevel === "detailed") {
+        response.moodTrend = moodTrend;
+        response.journalCount = journalCount;
+      }
+
+      res.json(response);
+    } catch (error) {
+      console.error("Student overview fetch error:", error);
+      res.status(500).json({ error: "Failed to fetch student overview" });
+    }
+  }
+);
+
+// Trigger risk analysis for journal entry (called automatically after journal save)
+app.post(
+  "/api/journal/:entryId/analyze-risk",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { entryId } = req.params;
+      const userId = req.user.userId;
+
+      // Check if risk monitoring is enabled
+      const user = await User.findById(userId).select("privacySettings");
+      if (!user?.privacySettings?.riskMonitoring?.enabled) {
+        return res.json({
+          message: "Risk monitoring not enabled",
+          analyzed: false,
+        });
+      }
+
+      // Trigger analysis
+      const riskAlert = await riskDetectionService.analyzeJournalEntry(
+        userId,
+        entryId
+      );
+
+      if (riskAlert) {
+        res.json({
+          message: "Risk detected and alert created",
+          analyzed: true,
+          riskLevel: riskAlert.riskLevel,
+          alertId: riskAlert._id,
+        });
+      } else {
+        res.json({
+          message: "No significant risk detected",
+          analyzed: true,
+        });
+      }
+    } catch (error) {
+      console.error("Risk analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze risk" });
+    }
+  }
+);
+
+// Trigger mood pattern analysis (can be called periodically via cron)
+app.post(
+  "/api/analyze-mood-patterns",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+
+      // Check if risk monitoring is enabled
+      const user = await User.findById(userId).select("privacySettings");
+      if (!user?.privacySettings?.riskMonitoring?.enabled) {
+        return res.json({
+          message: "Risk monitoring not enabled",
+          analyzed: false,
+        });
+      }
+
+      // Trigger analysis
+      const riskAlert = await riskDetectionService.analyzeMoodPattern(userId);
+
+      if (riskAlert) {
+        res.json({
+          message: "Risk pattern detected and alert created",
+          analyzed: true,
+          riskLevel: riskAlert.riskLevel,
+          alertId: riskAlert._id,
+        });
+      } else {
+        res.json({
+          message: "No concerning patterns detected",
+          analyzed: true,
+        });
+      }
+    } catch (error) {
+      console.error("Mood pattern analysis error:", error);
+      res.status(500).json({ error: "Failed to analyze mood patterns" });
     }
   }
 );

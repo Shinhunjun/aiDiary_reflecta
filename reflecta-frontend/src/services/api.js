@@ -178,6 +178,63 @@ class ApiService {
   async healthCheck() {
     return this.request("/health");
   }
+
+  // Privacy Settings methods
+  async getPrivacySettings() {
+    return this.request("/privacy-settings");
+  }
+
+  async updatePrivacySettings(settings) {
+    return this.request("/privacy-settings", {
+      method: "PUT",
+      body: JSON.stringify(settings),
+    });
+  }
+
+  async getCounselors() {
+    return this.request("/counselors");
+  }
+
+  // Counselor Dashboard methods
+  async getCounselorAlerts(filters = {}) {
+    const params = new URLSearchParams(filters);
+    return this.request(`/counselor/alerts?${params.toString()}`);
+  }
+
+  async getAlertDetails(alertId) {
+    return this.request(`/counselor/alerts/${alertId}`);
+  }
+
+  async updateAlertStatus(alertId, status, followUpDate = null) {
+    return this.request(`/counselor/alerts/${alertId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ status, followUpDate }),
+    });
+  }
+
+  async addCounselorNote(alertId, note, action = null) {
+    return this.request(`/counselor/alerts/${alertId}/notes`, {
+      method: "POST",
+      body: JSON.stringify({ note, action }),
+    });
+  }
+
+  async getStudentOverview(studentId) {
+    return this.request(`/counselor/students/${studentId}`);
+  }
+
+  // Risk Analysis methods
+  async analyzeJournalRisk(entryId) {
+    return this.request(`/journal/${entryId}/analyze-risk`, {
+      method: "POST",
+    });
+  }
+
+  async analyzeMoodPatterns() {
+    return this.request("/analyze-mood-patterns", {
+      method: "POST",
+    });
+  }
 }
 
 export default new ApiService();

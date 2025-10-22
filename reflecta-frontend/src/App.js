@@ -19,6 +19,8 @@ import Home from "./components/Home";
 import Journal from "./components/Journal";
 import GoalSetting from "./components/GoalSetting";
 import ProgressTracking from "./components/ProgressTracking";
+import PrivacySettings from "./components/PrivacySettings";
+import CounselorDashboard from "./components/CounselorDashboard";
 import Sidebar from "./components/Sidebar";
 import "./App.css";
 
@@ -162,6 +164,26 @@ const MainContent = () => {
               <AnimatedRoute>
                 <ProtectedRoute>
                   <ProgressTracking />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/privacy-settings"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <PrivacySettings />
+                </ProtectedRoute>
+              </AnimatedRoute>
+            }
+          />
+          <Route
+            path="/counselor-dashboard"
+            element={
+              <AnimatedRoute>
+                <ProtectedRoute>
+                  <CounselorDashboard />
                 </ProtectedRoute>
               </AnimatedRoute>
             }

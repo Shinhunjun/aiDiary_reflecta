@@ -141,6 +141,30 @@ const Sidebar = () => {
                 <span className="sidebar-label">Journal</span>
               </NavLink>
             </motion.div>
+
+            <motion.div variants={linkVariants} whileHover="hover">
+              <NavLink
+                to="/privacy-settings"
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? "active" : ""}`
+                }
+              >
+                <span className="sidebar-icon">🔒</span>
+                <span className="sidebar-label">Privacy</span>
+              </NavLink>
+            </motion.div>
+
+            <motion.div variants={linkVariants} whileHover="hover">
+              <NavLink
+                to="/counselor-dashboard"
+                className={({ isActive }) =>
+                  `sidebar-link ${isActive ? "active" : ""}`
+                }
+              >
+                <span className="sidebar-icon">👥</span>
+                <span className="sidebar-label">Counselor</span>
+              </NavLink>
+            </motion.div>
           </>
         ) : (
           <>
