@@ -1,6 +1,5 @@
 {
-  "version": 2,
-  "buildCommand": "cd reflecta-frontend && npm install && npm run build",
-  "outputDirectory": "reflecta-frontend/build",
-  "installCommand": "cd reflecta-frontend && npm install"
+  "buildCommand": "npm run build",
+  "outputDirectory": "build",
+  "installCommand": "npm install"
 }
