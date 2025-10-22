@@ -1,71 +1,71 @@
-# MHARD 데이터셋 분석 계획: Reflecta 인사이트 도출
+# MHARD Dataset Analysis Plan: Reflecta Insights Extraction
 
-## 목표
-Mental health 앱 사용자들의 실제 경험을 분석하여 Reflecta 설계에 반영할 인사이트 도출
+## Objective
+Analyze actual user experiences from mental health apps to derive insights for Reflecta design
 
-## 분석 전략
+## Analysis Strategy
 
-### Phase 1: 별점별 텍스트 분석
+### Phase 1: Text Analysis by Rating
 
-#### 1.1 Pain Point 분석 (1-2점 리뷰)
-**목적**: 사용자가 앱을 떠나게 만드는 치명적 문제 파악
+#### 1.1 Pain Point Analysis (1-2 star reviews)
+**Purpose**: Identify critical issues that cause users to abandon the app
 
-**분석 항목**:
-- **데이터 손실 관련**
-  - 키워드: "deleted", "lost", "disappeared", "gone", "missing"
-  - 인사이트: 데이터 백업/동기화의 중요성
+**Analysis Items**:
+- **Data Loss Related**
+  - Keywords: "deleted", "lost", "disappeared", "gone", "missing"
+  - Insight: Importance of data backup/synchronization
 
-- **기술적 문제**
-  - 키워드: "crash", "bug", "glitch", "freeze", "broken", "not working"
-  - 인사이트: 안정성이 최우선
+- **Technical Issues**
+  - Keywords: "crash", "bug", "glitch", "freeze", "broken", "not working"
+  - Insight: Stability is paramount
 
-- **UX 장벽**
-  - 키워드: "complicated", "confusing", "too many steps", "forced", "required"
-  - 인사이트: 간단하고 선택적인 UX
+- **UX Barriers**
+  - Keywords: "complicated", "confusing", "too many steps", "forced", "required"
+  - Insight: Simple and optional UX
 
-- **프라이버시 우려**
-  - 키워드: "privacy", "data", "account", "delete account", "password"
-  - 인사이트: 명확한 데이터 정책, 쉬운 계정 관리
+- **Privacy Concerns**
+  - Keywords: "privacy", "data", "account", "delete account", "password"
+  - Insight: Clear data policies, easy account management
 
-#### 1.2 개선 요구사항 분석 (3점 리뷰)
-**목적**: "좋지만 아쉬운" 부분 파악
+#### 1.2 Improvement Requirements Analysis (3 star reviews)
+**Purpose**: Identify "good but lacking" aspects
 
-**분석 항목**:
-- **비싼 Premium**
-  - 키워드: "premium", "paid", "expensive", "free"
-  - 인사이트: 적절한 무료/유료 기능 밸런스
+**Analysis Items**:
+- **Expensive Premium**
+  - Keywords: "premium", "paid", "expensive", "free"
+  - Insight: Appropriate free/paid feature balance
 
-- **부족한 기능**
-  - 키워드: "wish", "would be nice", "missing", "add", "feature request"
-  - 인사이트: 우선순위 높은 기능
+- **Missing Features**
+  - Keywords: "wish", "would be nice", "missing", "add", "feature request"
+  - Insight: High-priority features
 
-- **UI/UX 불편**
-  - 키워드: "difficult to", "hard to find", "cannot", "no option"
-  - 인사이트: 사용성 개선 포인트
+- **UI/UX Inconvenience**
+  - Keywords: "difficult to", "hard to find", "cannot", "no option"
+  - Insight: Usability improvement points
 
-#### 1.3 성공 요인 분석 (4-5점 리뷰)
-**목적**: 사용자를 만족시키는 핵심 가치 파악
+#### 1.3 Success Factor Analysis (4-5 star reviews)
+**Purpose**: Identify core values that satisfy users
 
-**분석 항목**:
-- **감정적 연결**
-  - 키워드: "love", "amazing", "life-changing", "helped me", "grateful"
-  - 인사이트: 정서적 지원의 중요성
+**Analysis Items**:
+- **Emotional Connection**
+  - Keywords: "love", "amazing", "life-changing", "helped me", "grateful"
+  - Insight: Importance of emotional support
 
-- **핵심 기능**
-  - 키워드: "mood tracking", "journaling", "meditation", "quotes", "reminders"
-  - 인사이트: 필수 기능 확인
+- **Core Features**
+  - Keywords: "mood tracking", "journaling", "meditation", "quotes", "reminders"
+  - Insight: Essential feature confirmation
 
-- **디자인/경험**
-  - 키워드: "cute", "beautiful", "simple", "easy", "intuitive", "calming"
-  - 인사이트: 심미성과 사용성
+- **Design/Experience**
+  - Keywords: "cute", "beautiful", "simple", "easy", "intuitive", "calming"
+  - Insight: Aesthetics and usability
 
-- **실제 도움**
-  - 키워드: "anxiety", "depression", "stress", "mental health", "better"
-  - 인사이트: 실질적 효과 증명
+- **Actual Help**
+  - Keywords: "anxiety", "depression", "stress", "mental health", "better"
+  - Insight: Proof of real effectiveness
 
-### Phase 2: 주제별 심층 분석
+### Phase 2: In-depth Analysis by Topic
 
-#### 2.1 Mental Health 특화 분석
+#### 2.1 Mental Health Specialized Analysis
 ```python
 mental_health_keywords = {
     "conditions": ["anxiety", "depression", "stress", "panic", "trauma", "bipolar"],
@@ -75,12 +75,12 @@ mental_health_keywords = {
 }
 ```
 
-**질문**:
-- 어떤 mental health 문제를 가진 사람들이 앱을 사용하는가?
-- 어떤 기능이 실제로 도움이 되었다고 언급되는가?
-- 부정적 경험은 mental health에 어떤 영향을 주었는가?
+**Questions**:
+- What mental health issues do app users have?
+- What features are mentioned as actually helpful?
+- How do negative experiences affect mental health?
 
-#### 2.2 기능별 만족도 분석
+#### 2.2 Feature Satisfaction Analysis
 ```python
 features = {
     "journaling": ["journal", "diary", "write", "entry", "story"],
@@ -93,11 +93,11 @@ features = {
 }
 ```
 
-**분석**:
-- 각 기능별로 긍정/부정 언급 비율
-- 기능 조합의 효과 (어떤 기능들이 함께 언급되는가?)
+**Analysis**:
+- Positive/negative mention ratio for each feature
+- Feature combination effects (which features are mentioned together?)
 
-#### 2.3 사용자 여정 분석
+#### 2.3 User Journey Analysis
 ```python
 journey_stages = {
     "onboarding": ["first", "started", "downloaded", "setup", "account"],
@@ -107,92 +107,92 @@ journey_stages = {
 }
 ```
 
-**질문**:
-- 초기 사용자가 겪는 문제는?
-- 장기 사용자가 가치있게 여기는 것은?
-- 이탈하게 만드는 결정적 요인은?
+**Questions**:
+- What problems do new users encounter?
+- What do long-term users value?
+- What are the decisive factors for churn?
 
 ### Phase 3: Comparative Analysis
 
-#### 3.1 앱별 비교
-상위 앱들의 차별화 포인트:
-- **Headspace**: 명상/마음챙김 중심
-- **Daylio**: 간단한 기분 추적
-- **7 Cups**: 사회적 지원
-- **Woebot**: AI 대화형 치료
+#### 3.1 App Comparison
+Differentiation points of top apps:
+- **Headspace**: Meditation/mindfulness focused
+- **Daylio**: Simple mood tracking
+- **7 Cups**: Social support
+- **Woebot**: AI conversational therapy
 
-**분석**: Reflecta의 포지셔닝 전략
+**Analysis**: Positioning strategy for Reflecta
 
-#### 3.2 시간대별 트렌드
+#### 3.2 Temporal Trends
 ```python
-# 리뷰 날짜 분석
-- 2018-2020: 초기 mental health 앱 시장
-- 2020-2022: 팬데믹 시기 (수요 급증)
-- 2022-2024: 성숙기 (높아진 기대치)
+# Review date analysis
+- 2018-2020: Early mental health app market
+- 2020-2022: Pandemic period (demand surge)
+- 2022-2024: Maturity phase (heightened expectations)
 ```
 
-### Phase 4: Reflecta 적용 인사이트
+### Phase 4: Reflecta Application Insights
 
 #### 4.1 Must-Have Features (from 5-star reviews)
-- [ ] 안정적인 데이터 저장/백업
-- [ ] 간단하고 직관적인 UI
-- [ ] 선택적/유연한 입력 방식
-- [ ] 시각적으로 calming한 디자인
-- [ ] 개인정보 보호
+- [ ] Stable data storage/backup
+- [ ] Simple and intuitive UI
+- [ ] Optional/flexible input methods
+- [ ] Visually calming design
+- [ ] Privacy protection
 
 #### 4.2 Must-Avoid Problems (from 1-2 star reviews)
-- [ ] 데이터 손실
-- [ ] 복잡한 온보딩
-- [ ] 강제 질문/단계
-- [ ] 과도한 Premium 페이월
-- [ ] 계정 관리 어려움
+- [ ] Data loss
+- [ ] Complex onboarding
+- [ ] Forced questions/steps
+- [ ] Excessive premium paywalls
+- [ ] Difficult account management
 
 #### 4.3 Differentiation Opportunities (from 3-star reviews)
-- [ ] 오프라인 모드
-- [ ] 강력한 검색 기능
-- [ ] 캘린더/리스트 뷰
-- [ ] 이미지 다중 선택
-- [ ] 커스텀 이모션/태그
+- [ ] Offline mode
+- [ ] Powerful search functionality
+- [ ] Calendar/list view
+- [ ] Multiple image selection
+- [ ] Custom emotions/tags
 
-## 구체적 분석 코드 구조
+## Specific Analysis Code Structure
 
-### 1. 데이터 전처리
+### 1. Data Preprocessing
 ```python
-# 별점별 그룹화
-low_rating = df[df['rating'] <= 2]  # 불만족
-mid_rating = df[df['rating'] == 3]   # 중립
-high_rating = df[df['rating'] >= 4]  # 만족
+# Group by rating
+low_rating = df[df['rating'] <= 2]  # Dissatisfied
+mid_rating = df[df['rating'] == 3]   # Neutral
+high_rating = df[df['rating'] >= 4]  # Satisfied
 ```
 
-### 2. 키워드 추출 및 빈도 분석
+### 2. Keyword Extraction and Frequency Analysis
 ```python
 # TF-IDF for distinctive keywords per rating group
 # N-gram analysis for common phrases
 # Co-occurrence analysis for feature relationships
 ```
 
-### 3. 감정 분석
+### 3. Sentiment Analysis
 ```python
 # Sentiment intensity per rating
 # Emotion classification (joy, sadness, anger, fear, surprise)
 # Aspect-based sentiment (feature-level sentiment)
 ```
 
-### 4. 주제 모델링
+### 4. Topic Modeling
 ```python
 # LDA/BERTopic for theme extraction
 # Topic evolution over time
 # Topic differences across ratings
 ```
 
-### 5. 인과 관계 분석
+### 5. Causal Relationship Analysis
 ```python
 # What features → high satisfaction?
 # What problems → churn?
 # What combination → best retention?
 ```
 
-## 예상 Deliverables
+## Expected Deliverables
 
 1. **Pain Point Report**
    - Top 10 reasons for 1-2 star ratings
