@@ -1,5 +1,6 @@
 import React from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import WordCloud from "./WordCloud";
 import "./GoalSummaryModal.css";
 
 const GoalSummaryModal = ({
@@ -218,6 +219,15 @@ const GoalSummaryModal = ({
                                 </div>
                               ))}
                           </div>
+                        </div>
+                      )}
+
+                    {/* Word Cloud */}
+                    {journalSummary.wordCloud &&
+                      journalSummary.wordCloud.length > 0 && (
+                        <div className="word-cloud-section">
+                          <h4>Word Cloud - Most Frequent Terms</h4>
+                          <WordCloud words={journalSummary.wordCloud} />
                         </div>
                       )}
 

@@ -293,6 +293,22 @@
   text-align: right;
 }
 
+/* Word Cloud Section */
+.word-cloud-section {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.word-cloud-section h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
 /* Key Themes */
 .key-themes {
   background: white;

@@ -1279,6 +1279,24 @@ app.get("/api/goals/:goalId/journals/summary", authenticateToken, async (req, re
       return acc;
     }, {});
 
+    // Generate word cloud data
+    const allText = journals.map(j => `${j.title} ${j.content}`).join(' ').toLowerCase();
+    const stopWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'from', 'as', 'is', 'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'should', 'could', 'may', 'might', 'can', 'this', 'that', 'these', 'those', 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'me', 'him', 'us', 'them', 'what', 'which', 'who', 'when', 'where', 'why', 'how', 'am', 'im', 'ive', 'id', 'ill', 'dont', 'didnt', 'doesnt', 'hasnt', 'havent', 'hadnt', 'wont', 'wouldnt', 'shouldnt', 'couldnt', 'cant', 'isnt', 'arent', 'wasnt', 'werent', 'just', 'really', 'very', 'much', 'more', 'most', 'some', 'any', 'all', 'each', 'every', 'other', 'another', 'such', 'own', 'same', 'so', 'than', 'too', 'also', 'well', 'only', 'like', 'dear', 'diary', 'yours', 'truly', 'user']);
+
+    const words = allText.match(/\b[a-z]{3,}\b/g) || [];
+    const wordFreq = {};
+    words.forEach(word => {
+      if (!stopWords.has(word)) {
+        wordFreq[word] = (wordFreq[word] || 0) + 1;
+      }
+    });
+
+    // Get top 50 words for word cloud
+    const wordCloudData = Object.entries(wordFreq)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 50)
+      .map(([text, value]) => ({ text, value }));
+
     // Prepare content for AI
     const journalContents = journals.map((j, idx) => {
       return `Entry ${idx + 1} (${j.date.toISOString().split('T')[0]}, Mood: ${j.mood}):\n${j.content}`;
@@ -1331,6 +1349,7 @@ Keep the summary concise (3-4 paragraphs), supportive, and insightful.`
         dateRange,
         moodDistribution,
         keyThemes: keyThemes.slice(0, 5),
+        wordCloud: wordCloudData,
         goalText,
       };
 
@@ -1348,6 +1367,7 @@ Keep the summary concise (3-4 paragraphs), supportive, and insightful.`
           dateRange,
           moodDistribution,
           keyThemes: keyThemes.slice(0, 5),
+          wordCloud: wordCloudData,
           goalText,
         },
         expiresAt,
