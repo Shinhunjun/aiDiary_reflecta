@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import apiService from "../services/api";
+import GoalSummaryModal from "./GoalSummaryModal";
 import "./Dashboard.css";
 
 const Dashboard = () => {
@@ -10,6 +11,13 @@ const Dashboard = () => {
   const [goals, setGoals] = useState(null);
   const [journalStats, setJournalStats] = useState({ total: 0, thisWeek: 0 });
   const [isLoading, setIsLoading] = useState(true);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [selectedGoalId, setSelectedGoalId] = useState(null);
+  const [selectedGoalText, setSelectedGoalText] = useState("");
+  const [journalSummary, setJournalSummary] = useState(null);
+  const [childrenSummary, setChildrenSummary] = useState(null);
+  const [loadingJournalSummary, setLoadingJournalSummary] = useState(false);
+  const [loadingChildrenSummary, setLoadingChildrenSummary] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -43,6 +51,58 @@ const Dashboard = () => {
 
     loadDashboardData();
   }, [user?.id]);
+
+  // Fetch journal summary when goal is selected
+  useEffect(() => {
+    const fetchJournalSummary = async () => {
+      if (!selectedGoalId) {
+        setJournalSummary(null);
+        return;
+      }
+
+      try {
+        setLoadingJournalSummary(true);
+        const summary = await apiService.getGoalJournalSummary(selectedGoalId);
+        setJournalSummary(summary);
+      } catch (error) {
+        console.error("Failed to fetch journal summary:", error);
+        setJournalSummary(null);
+      } finally {
+        setLoadingJournalSummary(false);
+      }
+    };
+
+    fetchJournalSummary();
+  }, [selectedGoalId]);
+
+  // Fetch children summary when goal is selected
+  useEffect(() => {
+    const fetchChildrenSummary = async () => {
+      if (!selectedGoalId) {
+        setChildrenSummary(null);
+        return;
+      }
+
+      try {
+        setLoadingChildrenSummary(true);
+        const summary = await apiService.getGoalChildrenSummary(selectedGoalId);
+        setChildrenSummary(summary);
+      } catch (error) {
+        console.error("Failed to fetch children summary:", error);
+        setChildrenSummary(null);
+      } finally {
+        setLoadingChildrenSummary(false);
+      }
+    };
+
+    fetchChildrenSummary();
+  }, [selectedGoalId]);
+
+  const handleGoalClick = (goal) => {
+    setSelectedGoalId(goal.id);
+    setSelectedGoalText(goal.text);
+    setShowSummaryModal(true);
+  };
 
   const calculateGoalStats = () => {
     if (!goals || !goals.subGoals) {
@@ -128,11 +188,11 @@ const Dashboard = () => {
                   <div className="goals-grid">
                     {goals.subGoals
                       .filter((g) => g && g.text)
-                      .map((goal, index) => (
+                      .map((goal) => (
                         <div
                           key={goal.id}
                           className="goal-card"
-                          onClick={() => navigate("/goal-setting")}
+                          onClick={() => handleGoalClick(goal)}
                         >
                           <h4>{goal.text}</h4>
                           {goal.description && (
@@ -197,6 +257,17 @@ const Dashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* Goal Summary Modal */}
+      <GoalSummaryModal
+        isOpen={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        goalText={selectedGoalText}
+        journalSummary={journalSummary}
+        childrenSummary={childrenSummary}
+        loadingJournalSummary={loadingJournalSummary}
+        loadingChildrenSummary={loadingChildrenSummary}
+      />
     </div>
   );
 };
