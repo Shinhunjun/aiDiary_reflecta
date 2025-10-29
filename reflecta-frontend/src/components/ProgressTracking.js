@@ -154,7 +154,12 @@ const ProgressTracking = () => {
     const isSelectedRoot = selectedGoalId === node.id;
     const isFocused = focusedSubGoalId === node.id;
 
-    const handleClick = () => {
+    const handleClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      console.log('Goal clicked:', node.text, 'ID:', node.id, 'isRoot:', isRoot);
+
       if (isRoot) {
         setSelectedGoalId(node.id);
         setFocusedSubGoalId(null);
@@ -166,8 +171,11 @@ const ProgressTracking = () => {
       // Scroll to summary section after a short delay
       setTimeout(() => {
         const summarySection = document.querySelector('.children-summary-section, .journal-summary-section');
+        console.log('Scrolling to summary section:', summarySection);
         if (summarySection) {
           summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        } else {
+          console.log('Summary section not found!');
         }
       }, 100);
     };
