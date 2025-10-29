@@ -22,6 +22,7 @@ const Chat = () => {
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [showDiaryModal, setShowDiaryModal] = useState(false);
   const [diaryContent, setDiaryContent] = useState("");
+  const [diaryMood, setDiaryMood] = useState("reflective");
   const [goalMapping, setGoalMapping] = useState(null);
   const [isConvertingToDiary, setIsConvertingToDiary] = useState(false);
   const [isLoadingChat, setIsLoadingChat] = useState(true);
@@ -160,7 +161,7 @@ const Chat = () => {
       const diaryEntry = await apiService.saveJournalEntry({
         title: `Daily Reflection - ${dateString}`,
         content: diaryContent,
-        mood: "reflective",
+        mood: diaryMood,
         tags: ["AI Reflection", "Personal Growth", "Daily Reflection"],
         isAIGenerated: true,
         // convertToDiary에서 받은 Goal 매핑 정보 사용
@@ -197,6 +198,7 @@ const Chat = () => {
 
       setShowDiaryModal(false);
       setDiaryContent("");
+      setDiaryMood("reflective");
       setGoalMapping(null);
 
       // 성공 메시지 표시
@@ -466,6 +468,28 @@ const Chat = () => {
                   you didn't share.
                 </p>
               </div>
+
+              <div className="diary-mood-selector">
+                <label htmlFor="diary-mood">How are you feeling?</label>
+                <select
+                  id="diary-mood"
+                  value={diaryMood}
+                  onChange={(e) => setDiaryMood(e.target.value)}
+                  className="diary-mood-select"
+                >
+                  <option value="happy">😊 Happy</option>
+                  <option value="excited">🤩 Excited</option>
+                  <option value="calm">😌 Calm</option>
+                  <option value="reflective">🤔 Reflective</option>
+                  <option value="neutral">😐 Neutral</option>
+                  <option value="anxious">😰 Anxious</option>
+                  <option value="sad">😢 Sad</option>
+                  <option value="grateful">🙏 Grateful</option>
+                  <option value="stressed">😫 Stressed</option>
+                  <option value="angry">😠 Angry</option>
+                </select>
+              </div>
+
               <textarea
                 value={diaryContent}
                 onChange={(e) => setDiaryContent(e.target.value)}

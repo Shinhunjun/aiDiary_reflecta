@@ -468,6 +468,40 @@
   color: #f1f5f9;
 }
 
+.diary-mood-selector {
+  margin-bottom: 20px;
+}
+
+.diary-mood-selector label {
+  display: block;
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
+
+.diary-mood-select {
+  width: 100%;
+  padding: 10px 14px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: #f1f5f9;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.diary-mood-select:hover {
+  border-color: #6366f1;
+}
+
+.diary-mood-select:focus {
+  outline: none;
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
 .diary-textarea {
   width: 100%;
   min-height: 300px;
