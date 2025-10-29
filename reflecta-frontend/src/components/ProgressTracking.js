@@ -162,6 +162,14 @@ const ProgressTracking = () => {
         setSelectedGoalId(rootGoalId);
         setFocusedSubGoalId(node.id);
       }
+
+      // Scroll to summary section after a short delay
+      setTimeout(() => {
+        const summarySection = document.querySelector('.children-summary-section, .journal-summary-section');
+        if (summarySection) {
+          summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
     };
 
     return (
