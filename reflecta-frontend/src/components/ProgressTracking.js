@@ -27,6 +27,8 @@ const ProgressTracking = () => {
   const [error, setError] = useState("");
   const [journalSummary, setJournalSummary] = useState(null);
   const [loadingJournalSummary, setLoadingJournalSummary] = useState(false);
+  const [childrenSummary, setChildrenSummary] = useState(null);
+  const [loadingChildrenSummary, setLoadingChildrenSummary] = useState(false);
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -93,6 +95,25 @@ const ProgressTracking = () => {
     };
 
     fetchJournalSummary();
+  }, [selectedGoalId]);
+
+  useEffect(() => {
+    const fetchChildrenSummary = async () => {
+      if (!selectedGoalId) return;
+
+      try {
+        setLoadingChildrenSummary(true);
+        const data = await apiService.getGoalChildrenSummary(selectedGoalId);
+        setChildrenSummary(data);
+      } catch (err) {
+        console.error("Failed to load children summary:", err);
+        setChildrenSummary(null);
+      } finally {
+        setLoadingChildrenSummary(false);
+      }
+    };
+
+    fetchChildrenSummary();
   }, [selectedGoalId]);
 
   const goalLookup = useMemo(() => {
@@ -336,6 +357,83 @@ const ProgressTracking = () => {
             </ul>
           )}
         </section>
+
+        {/* Sub-Goals Progress Overview */}
+        {childrenSummary && childrenSummary.childGoalsCount > 0 && (
+          <section className="summary-section children-summary-section">
+            <header>
+              <h4>🎯 Sub-Goals Overview</h4>
+              <span className="summary-subtitle">Progress across {childrenSummary.childGoalsCount} sub-goals</span>
+            </header>
+            {loadingChildrenSummary ? (
+              <div className="summary-placeholder">Analyzing sub-goals progress...</div>
+            ) : childrenSummary.totalEntries > 0 ? (
+              <div className="children-summary-content">
+                <div className="children-summary-header">
+                  <div className="children-summary-stats">
+                    <div className="stat-item">
+                      <span className="stat-label">Sub-Goals</span>
+                      <span className="stat-value">{childrenSummary.childGoalsCount}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Total Entries</span>
+                      <span className="stat-value">{childrenSummary.totalEntries}</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-label">Active Goals</span>
+                      <span className="stat-value">{childrenSummary.childGoalsSummaries?.length || 0}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="children-summary-text">
+                  <h5>Overall Progress for: {childrenSummary.goalText}</h5>
+                  <p>{childrenSummary.summary}</p>
+                </div>
+
+                {childrenSummary.childGoalsSummaries && childrenSummary.childGoalsSummaries.length > 0 && (
+                  <div className="child-goals-grid">
+                    <h5>Individual Sub-Goal Progress</h5>
+                    <div className="child-goals-list">
+                      {childrenSummary.childGoalsSummaries.map((childGoal) => (
+                        <div key={childGoal.goalId} className="child-goal-card">
+                          <div className="child-goal-header">
+                            <h6>{childGoal.goalText}</h6>
+                            <span className="child-goal-count">{childGoal.entryCount} entries</span>
+                          </div>
+                          <div className="child-goal-meta">
+                            <span className="child-goal-dates">
+                              {new Date(childGoal.dateRange.start).toLocaleDateString()} - {new Date(childGoal.dateRange.end).toLocaleDateString()}
+                            </span>
+                            <span className={`child-goal-mood mood-${childGoal.latestMood}`}>
+                              Latest: {childGoal.latestMood}
+                            </span>
+                          </div>
+                          {childGoal.moodDistribution && (
+                            <div className="child-goal-mood-mini">
+                              {Object.entries(childGoal.moodDistribution)
+                                .sort((a, b) => b[1] - a[1])
+                                .slice(0, 3)
+                                .map(([mood, count]) => (
+                                  <span key={mood} className="mood-badge">
+                                    {mood} ({count})
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="summary-placeholder small">
+                No journal entries found for sub-goals yet.
+              </div>
+            )}
+          </section>
+        )}
 
         {/* AI-Powered Journal Summary */}
         <section className="summary-section journal-summary-section">

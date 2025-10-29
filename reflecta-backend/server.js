@@ -1342,6 +1342,192 @@ Keep the summary concise (3-4 paragraphs), supportive, and insightful.`
   }
 });
 
+// Get aggregated AI summary for a sub-goal including all its child sub-sub-goals
+app.get("/api/goals/:goalId/children/summary", authenticateToken, async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const userId = req.user.userId;
+
+    // Get goal structure to find child goals
+    const goal = await Goal.findOne({
+      userId: userId,
+      $or: [
+        { "mandalartData.id": goalId },
+        { "mandalartData.subGoals.id": goalId },
+      ]
+    });
+
+    if (!goal) {
+      return res.status(404).json({ error: "Goal not found" });
+    }
+
+    // Find the specific sub-goal and its children
+    let targetGoal = null;
+    let childGoalIds = [];
+
+    const findGoalAndChildren = (data, id) => {
+      if (data.id === id) {
+        targetGoal = data;
+        if (data.subGoals) {
+          childGoalIds = data.subGoals.filter(sg => sg && sg.id).map(sg => sg.id);
+        }
+        return true;
+      }
+      if (data.subGoals) {
+        for (const sg of data.subGoals) {
+          if (sg && findGoalAndChildren(sg, id)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    findGoalAndChildren(goal.mandalartData, goalId);
+
+    if (!targetGoal) {
+      return res.status(404).json({ error: "Specific goal not found in structure" });
+    }
+
+    if (childGoalIds.length === 0) {
+      return res.json({
+        summary: `This goal "${targetGoal.text}" has no sub-goals yet. Progress tracking is at the individual goal level.`,
+        goalText: targetGoal.text,
+        childGoalsCount: 0,
+        totalEntries: 0,
+        childGoalsSummaries: [],
+      });
+    }
+
+    // Get all journals for child goals
+    const journals = await JournalEntry.find({
+      userId: userId,
+      relatedGoalId: { $in: childGoalIds },
+    }).sort({ date: -1 }).limit(50); // Max 50 entries for aggregation
+
+    if (journals.length === 0) {
+      return res.json({
+        summary: `No journal entries found for the sub-goals under "${targetGoal.text}". Start journaling to track progress!`,
+        goalText: targetGoal.text,
+        childGoalsCount: childGoalIds.length,
+        totalEntries: 0,
+        childGoalsSummaries: [],
+      });
+    }
+
+    // Group journals by child goal
+    const journalsByGoal = {};
+    childGoalIds.forEach(id => {
+      const childGoal = targetGoal.subGoals.find(sg => sg && sg.id === id);
+      if (childGoal) {
+        journalsByGoal[id] = {
+          goalText: childGoal.text,
+          entries: journals.filter(j => j.relatedGoalId === id)
+        };
+      }
+    });
+
+    // Create summary for each child goal
+    const childSummaries = Object.entries(journalsByGoal)
+      .filter(([_, data]) => data.entries.length > 0)
+      .map(([id, data]) => {
+        const entries = data.entries;
+        const moodDist = entries.reduce((acc, j) => {
+          acc[j.mood] = (acc[j.mood] || 0) + 1;
+          return acc;
+        }, {});
+
+        const latestEntry = entries[0];
+        const oldestEntry = entries[entries.length - 1];
+
+        return {
+          goalId: id,
+          goalText: data.goalText,
+          entryCount: entries.length,
+          dateRange: {
+            start: oldestEntry.date,
+            end: latestEntry.date,
+          },
+          moodDistribution: moodDist,
+          latestMood: latestEntry.mood,
+        };
+      });
+
+    // Prepare all content for overall AI summary
+    const summaryByGoal = childSummaries.map(cs => {
+      const goalsForAI = journalsByGoal[cs.goalId].entries.slice(0, 3); // Top 3 for each
+      const contentSample = goalsForAI.map(j =>
+        `[${j.date.toISOString().split('T')[0]}] ${j.content.substring(0, 150)}`
+      ).join(' ... ');
+      return `\n${cs.goalText} (${cs.entryCount} entries): ${contentSample}`;
+    }).join('\n');
+
+    // Call OpenAI for aggregated summary
+    try {
+      const openaiResponse = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `You are analyzing progress across multiple sub-goals under a parent goal "${targetGoal.text}". Provide an overview of:
+1. Overall progress across all sub-goals
+2. Which areas show the most development
+3. Common patterns or themes across the sub-goals
+4. Areas that need more attention
+5. Key achievements and challenges
+
+Keep it concise (3-4 paragraphs), motivational, and actionable.`
+            },
+            {
+              role: "user",
+              content: `Analyze progress for "${targetGoal.text}" across ${childSummaries.length} sub-goals with a total of ${journals.length} journal entries:\n${summaryByGoal}`
+            }
+          ],
+          max_tokens: 600,
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const aiSummary = openaiResponse.data.choices[0].message.content;
+
+      res.json({
+        summary: aiSummary,
+        goalText: targetGoal.text,
+        childGoalsCount: childGoalIds.length,
+        totalEntries: journals.length,
+        childGoalsSummaries: childSummaries,
+      });
+
+    } catch (openaiError) {
+      console.error("OpenAI API error:", openaiError.response?.data || openaiError.message);
+
+      // Fallback summary
+      const activeGoals = childSummaries.length;
+      const fallbackSummary = `You have ${journals.length} journal entries across ${activeGoals} sub-goals under "${targetGoal.text}". The most active areas are: ${childSummaries.slice(0, 3).map(cs => cs.goalText).join(', ')}. Keep up the consistent progress!`;
+
+      res.json({
+        summary: fallbackSummary,
+        goalText: targetGoal.text,
+        childGoalsCount: childGoalIds.length,
+        totalEntries: journals.length,
+        childGoalsSummaries: childSummaries,
+      });
+    }
+
+  } catch (error) {
+    console.error("Get aggregated children summary error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // 임시 테스트용 API (인증 없음)
 app.get("/api/test/goals/:goalId/journals", async (req, res) => {
   try {
