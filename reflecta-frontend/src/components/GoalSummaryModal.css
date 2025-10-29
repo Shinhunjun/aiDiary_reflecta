@@ -71,6 +71,8 @@
   padding: 2rem;
   overflow-y: auto;
   flex: 1;
+  background: #f9fafb;
+  color: #1f2937;
 }
 
 /* Children Summary Section */
@@ -174,7 +176,7 @@
   margin: 0.75rem 0;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: #4b5563;
+  color: #1f2937;
 }
 
 .mood-indicator {
