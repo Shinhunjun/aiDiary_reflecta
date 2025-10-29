@@ -424,6 +424,175 @@
   }
 }
 
+/* Journal Summary Section */
+.journal-summary-section {
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  padding: 24px;
+  border-radius: 16px;
+  margin-top: 24px;
+}
+
+.journal-summary-section header {
+  margin-bottom: 20px;
+}
+
+.journal-summary-section h4 {
+  font-size: 20px;
+  margin: 0 0 6px 0;
+  color: #e2e8f0;
+}
+
+.summary-subtitle {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.6);
+}
+
+.journal-summary-content {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.journal-summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.journal-summary-stats {
+  display: flex;
+  gap: 32px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: rgba(226, 232, 240, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+.stat-value.small {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.journal-summary-text {
+  background: rgba(15, 23, 42, 0.5);
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.journal-summary-text h5 {
+  margin: 0 0 12px 0;
+  color: #c4b5fd;
+  font-size: 16px;
+}
+
+.journal-summary-text p {
+  margin: 0;
+  line-height: 1.7;
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 15px;
+}
+
+.mood-distribution {
+  background: rgba(15, 23, 42, 0.4);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.mood-distribution h5 {
+  margin: 0 0 16px 0;
+  color: #e2e8f0;
+  font-size: 15px;
+}
+
+.mood-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.mood-bar-item {
+  display: grid;
+  grid-template-columns: 100px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+}
+
+.mood-label {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.8);
+  text-transform: capitalize;
+  font-weight: 500;
+}
+
+.mood-bar-container {
+  height: 8px;
+  background: rgba(148, 163, 184, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.mood-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #6366f1 0%, #a78bfa 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.mood-count {
+  font-size: 13px;
+  color: rgba(226, 232, 240, 0.7);
+  text-align: right;
+  font-weight: 600;
+}
+
+.key-themes {
+  background: rgba(15, 23, 42, 0.4);
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.key-themes h5 {
+  margin: 0 0 12px 0;
+  color: #e2e8f0;
+  font-size: 15px;
+}
+
+.theme-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.theme-tag {
+  background: rgba(99, 102, 241, 0.15);
+  color: #c4b5fd;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
 /* Analytics Section Styles */
 .analytics-section {
   margin-top: 30px;

@@ -25,6 +25,8 @@ const ProgressTracking = () => {
   const [loadingGoals, setLoadingGoals] = useState(true);
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [error, setError] = useState("");
+  const [journalSummary, setJournalSummary] = useState(null);
+  const [loadingJournalSummary, setLoadingJournalSummary] = useState(false);
 
   useEffect(() => {
     const loadGoals = async () => {
@@ -73,6 +75,25 @@ const ProgressTracking = () => {
 
     fetchSummary();
   }, [selectedGoalId, period]);
+
+  useEffect(() => {
+    const fetchJournalSummary = async () => {
+      if (!selectedGoalId) return;
+
+      try {
+        setLoadingJournalSummary(true);
+        const data = await apiService.getGoalJournalSummary(selectedGoalId);
+        setJournalSummary(data);
+      } catch (err) {
+        console.error("Failed to load journal summary:", err);
+        setJournalSummary(null);
+      } finally {
+        setLoadingJournalSummary(false);
+      }
+    };
+
+    fetchJournalSummary();
+  }, [selectedGoalId]);
 
   const goalLookup = useMemo(() => {
     const map = new Map();
@@ -313,6 +334,78 @@ const ProgressTracking = () => {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        {/* AI-Powered Journal Summary */}
+        <section className="summary-section journal-summary-section">
+          <header>
+            <h4>📝 Journal Insights</h4>
+            <span className="summary-subtitle">AI-powered summary of your journal entries</span>
+          </header>
+          {loadingJournalSummary ? (
+            <div className="summary-placeholder">Analyzing your journal entries...</div>
+          ) : journalSummary && journalSummary.entryCount > 0 ? (
+            <div className="journal-summary-content">
+              <div className="journal-summary-header">
+                <div className="journal-summary-stats">
+                  <div className="stat-item">
+                    <span className="stat-label">Entries</span>
+                    <span className="stat-value">{journalSummary.entryCount}</span>
+                  </div>
+                  {journalSummary.dateRange && (
+                    <div className="stat-item">
+                      <span className="stat-label">Period</span>
+                      <span className="stat-value small">
+                        {new Date(journalSummary.dateRange.start).toLocaleDateString()} - {new Date(journalSummary.dateRange.end).toLocaleDateString()}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="journal-summary-text">
+                <h5>Summary for: {journalSummary.goalText}</h5>
+                <p>{journalSummary.summary}</p>
+              </div>
+
+              {journalSummary.moodDistribution && Object.keys(journalSummary.moodDistribution).length > 0 && (
+                <div className="mood-distribution">
+                  <h5>Mood Distribution</h5>
+                  <div className="mood-bars">
+                    {Object.entries(journalSummary.moodDistribution)
+                      .sort((a, b) => b[1] - a[1])
+                      .map(([mood, count]) => (
+                        <div key={mood} className="mood-bar-item">
+                          <span className="mood-label">{mood}</span>
+                          <div className="mood-bar-container">
+                            <div
+                              className="mood-bar-fill"
+                              style={{ width: `${(count / journalSummary.entryCount) * 100}%` }}
+                            />
+                          </div>
+                          <span className="mood-count">{count}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {journalSummary.keyThemes && journalSummary.keyThemes.length > 0 && (
+                <div className="key-themes">
+                  <h5>Key Themes</h5>
+                  <div className="theme-tags">
+                    {journalSummary.keyThemes.map((theme, idx) => (
+                      <span key={idx} className="theme-tag">{theme}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="summary-placeholder small">
+              No journal entries found for this goal. Start journaling to see AI-powered insights!
+            </div>
           )}
         </section>
 

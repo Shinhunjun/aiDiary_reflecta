@@ -179,6 +179,10 @@ class ApiService {
     return this.request(`/test/goals/${goalId}/journals`);
   }
 
+  async getGoalJournalSummary(goalId) {
+    return this.request(`/goals/${goalId}/journals/summary`);
+  }
+
   // Convert conversation to diary with goal mapping
   async convertToDiary(conversationText) {
     return this.request("/convert-to-diary", {

@@ -1197,6 +1197,151 @@ app.get("/api/goals/:goalId/journals", authenticateToken, async (req, res) => {
   }
 });
 
+// Get AI-powered summary of journals for a goal
+app.get("/api/goals/:goalId/journals/summary", authenticateToken, async (req, res) => {
+  try {
+    const { goalId } = req.params;
+    const userId = req.user.userId;
+
+    // Get journals for this goal
+    const journals = await JournalEntry.find({
+      userId: userId,
+      relatedGoalId: goalId,
+    }).sort({ date: -1 }).limit(20); // Last 20 entries
+
+    if (journals.length === 0) {
+      return res.json({
+        summary: "No journal entries found for this goal yet. Start journaling to see insights!",
+        entryCount: 0,
+        dateRange: null,
+        moodDistribution: {},
+        keyThemes: [],
+      });
+    }
+
+    // Get goal info
+    const goal = await Goal.findOne({
+      userId: userId,
+      $or: [
+        { "mandalartData.id": goalId },
+        { "mandalartData.subGoals.id": goalId },
+        { "mandalartData.subGoals.subGoals.id": goalId }
+      ]
+    });
+
+    let goalText = "this goal";
+    if (goal) {
+      // Find the specific goal text
+      const findGoalText = (data, id) => {
+        if (data.id === id) return data.text;
+        if (data.subGoals) {
+          for (const sg of data.subGoals) {
+            if (sg && sg.id === id) return sg.text;
+            if (sg && sg.subGoals) {
+              for (const ssg of sg.subGoals) {
+                if (ssg && ssg.id === id) return ssg.text;
+              }
+            }
+          }
+        }
+        return null;
+      };
+      goalText = findGoalText(goal.mandalartData, goalId) || goalText;
+    }
+
+    // Calculate basic stats
+    const dateRange = {
+      start: journals[journals.length - 1].date,
+      end: journals[0].date,
+    };
+
+    const moodDistribution = journals.reduce((acc, j) => {
+      acc[j.mood] = (acc[j.mood] || 0) + 1;
+      return acc;
+    }, {});
+
+    // Prepare content for AI
+    const journalContents = journals.map((j, idx) => {
+      return `Entry ${idx + 1} (${j.date.toISOString().split('T')[0]}, Mood: ${j.mood}):\n${j.content}`;
+    }).join('\n\n');
+
+    // Call OpenAI for summary
+    try {
+      const openaiResponse = await axios.post(
+        "https://api.openai.com/v1/chat/completions",
+        {
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: `You are a reflective journal analyst. Summarize the user's journal entries related to their goal "${goalText}". Focus on:
+1. Overall progress and journey towards the goal
+2. Emotional patterns and mindset changes
+3. Key achievements and challenges
+4. Recurring themes or insights
+5. Actionable observations
+
+Keep the summary concise (3-4 paragraphs), supportive, and insightful.`
+            },
+            {
+              role: "user",
+              content: `Here are ${journals.length} journal entries related to the goal "${goalText}":\n\n${journalContents}\n\nPlease provide a thoughtful summary.`
+            }
+          ],
+          max_tokens: 500,
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+          },
+        }
+      );
+
+      const aiSummary = openaiResponse.data.choices[0].message.content;
+
+      // Extract key themes using simple keyword analysis
+      const allContent = journals.map(j => j.content.toLowerCase()).join(' ');
+      const commonWords = ['goal', 'progress', 'learning', 'challenge', 'achievement', 'development', 'growth', 'improvement', 'struggle', 'success'];
+      const keyThemes = commonWords.filter(word => allContent.includes(word));
+
+      res.json({
+        summary: aiSummary,
+        entryCount: journals.length,
+        dateRange,
+        moodDistribution,
+        keyThemes: keyThemes.slice(0, 5),
+        goalText,
+      });
+
+    } catch (openaiError) {
+      console.error("OpenAI API error:", openaiError.response?.data || openaiError.message);
+
+      // Fallback: Basic summary without AI
+      const moodList = Object.entries(moodDistribution)
+        .sort((a, b) => b[1] - a[1])
+        .map(([mood, count]) => `${mood} (${count})`)
+        .join(', ');
+
+      const fallbackSummary = `You have written ${journals.length} journal entries related to "${goalText}" from ${dateRange.start.toLocaleDateString()} to ${dateRange.end.toLocaleDateString()}. Your mood distribution: ${moodList}. Keep up the journaling to track your progress!`;
+
+      res.json({
+        summary: fallbackSummary,
+        entryCount: journals.length,
+        dateRange,
+        moodDistribution,
+        keyThemes: [],
+        goalText,
+      });
+    }
+
+  } catch (error) {
+    console.error("Get goal journal summary error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 // 임시 테스트용 API (인증 없음)
 app.get("/api/test/goals/:goalId/journals", async (req, res) => {
   try {
