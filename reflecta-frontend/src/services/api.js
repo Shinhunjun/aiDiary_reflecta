@@ -176,7 +176,7 @@ class ApiService {
 
   // Goal Related Journal methods
   async getGoalJournals(goalId) {
-    return this.request(`/test/goals/${goalId}/journals`);
+    return this.request(`/goals/${goalId}/journals`);
   }
 
   async getGoalJournalSummary(goalId) {

@@ -8,10 +8,36 @@ const GoalSummaryModal = ({
   goalText,
   journalSummary,
   childrenSummary,
+  journalEntries,
   loadingJournalSummary,
   loadingChildrenSummary,
+  loadingJournalEntries,
 }) => {
   if (!isOpen) return null;
+
+  const getMoodEmoji = (mood) => {
+    const moodEmojis = {
+      happy: "😊",
+      excited: "🤩",
+      grateful: "🙏",
+      calm: "😌",
+      reflective: "🤔",
+      neutral: "😐",
+      anxious: "😰",
+      sad: "😢",
+      angry: "😠",
+      stressed: "😫",
+    };
+    return moodEmojis[mood?.toLowerCase()] || "😐";
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   const getMoodColor = (mood) => {
     const moodColors = {

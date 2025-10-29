@@ -94,6 +94,7 @@ const JournalEntry = require("./models/JournalEntry");
 const ChatSession = require("./models/ChatSession");
 const GoalProgress = require("./models/GoalProgress");
 const RiskAlert = require("./models/RiskAlert");
+const GoalSummary = require("./models/GoalSummary");
 
 // Middleware and Services
 const { requireRole, canAccessStudent, canModifyAlert } = require("./middleware/authorization");
@@ -1203,6 +1204,24 @@ app.get("/api/goals/:goalId/journals/summary", authenticateToken, async (req, re
     const { goalId } = req.params;
     const userId = req.user.userId;
 
+    // Check for cached summary (valid for 7 days)
+    const cachedSummary = await GoalSummary.findOne({
+      userId,
+      goalId,
+      summaryType: "journal",
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+
+    if (cachedSummary) {
+      console.log(`Using cached journal summary for goal ${goalId}`);
+      return res.json({
+        ...cachedSummary.metadata,
+        summary: cachedSummary.summary,
+        entryCount: cachedSummary.entryCount,
+        cached: true
+      });
+    }
+
     // Get journals for this goal
     const journals = await JournalEntry.find({
       userId: userId,
@@ -1306,14 +1325,36 @@ Keep the summary concise (3-4 paragraphs), supportive, and insightful.`
       const commonWords = ['goal', 'progress', 'learning', 'challenge', 'achievement', 'development', 'growth', 'improvement', 'struggle', 'success'];
       const keyThemes = commonWords.filter(word => allContent.includes(word));
 
-      res.json({
+      const responseData = {
         summary: aiSummary,
         entryCount: journals.length,
         dateRange,
         moodDistribution,
         keyThemes: keyThemes.slice(0, 5),
         goalText,
+      };
+
+      // Cache the summary for 7 days
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await GoalSummary.create({
+        userId,
+        goalId,
+        summaryType: "journal",
+        summary: aiSummary,
+        entryCount: journals.length,
+        metadata: {
+          dateRange,
+          moodDistribution,
+          keyThemes: keyThemes.slice(0, 5),
+          goalText,
+        },
+        expiresAt,
       });
+      console.log(`Cached journal summary for goal ${goalId} (expires in 7 days)`);
+
+      res.json(responseData);
 
     } catch (openaiError) {
       console.error("OpenAI API error:", openaiError.response?.data || openaiError.message);
@@ -1347,6 +1388,24 @@ app.get("/api/goals/:goalId/children/summary", authenticateToken, async (req, re
   try {
     const { goalId } = req.params;
     const userId = req.user.userId;
+
+    // Check for cached summary (valid for 7 days)
+    const cachedSummary = await GoalSummary.findOne({
+      userId,
+      goalId,
+      summaryType: "children",
+      expiresAt: { $gt: new Date() }
+    }).sort({ createdAt: -1 });
+
+    if (cachedSummary) {
+      console.log(`Using cached children summary for goal ${goalId}`);
+      return res.json({
+        ...cachedSummary.metadata,
+        summary: cachedSummary.summary,
+        totalEntries: cachedSummary.entryCount,
+        cached: true
+      });
+    }
 
     // Get goal structure to find child goals
     const goal = await Goal.findOne({
@@ -1498,13 +1557,34 @@ Keep it concise (3-4 paragraphs), motivational, and actionable.`
 
       const aiSummary = openaiResponse.data.choices[0].message.content;
 
-      res.json({
+      const responseData = {
         summary: aiSummary,
         goalText: targetGoal.text,
         childGoalsCount: childGoalIds.length,
         totalEntries: journals.length,
         childGoalsSummaries: childSummaries,
+      };
+
+      // Cache the summary for 7 days
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      await GoalSummary.create({
+        userId,
+        goalId,
+        summaryType: "children",
+        summary: aiSummary,
+        entryCount: journals.length,
+        metadata: {
+          goalText: targetGoal.text,
+          childGoalsCount: childGoalIds.length,
+          childGoalsSummaries: childSummaries,
+        },
+        expiresAt,
       });
+      console.log(`Cached children summary for goal ${goalId} (expires in 7 days)`);
+
+      res.json(responseData);
 
     } catch (openaiError) {
       console.error("OpenAI API error:", openaiError.response?.data || openaiError.message);

@@ -16,8 +16,10 @@ const Dashboard = () => {
   const [selectedGoalText, setSelectedGoalText] = useState("");
   const [journalSummary, setJournalSummary] = useState(null);
   const [childrenSummary, setChildrenSummary] = useState(null);
+  const [journalEntries, setJournalEntries] = useState([]);
   const [loadingJournalSummary, setLoadingJournalSummary] = useState(false);
   const [loadingChildrenSummary, setLoadingChildrenSummary] = useState(false);
+  const [loadingJournalEntries, setLoadingJournalEntries] = useState(false);
 
   useEffect(() => {
     const loadDashboardData = async () => {
@@ -96,6 +98,29 @@ const Dashboard = () => {
     };
 
     fetchChildrenSummary();
+  }, [selectedGoalId]);
+
+  // Fetch journal entries when goal is selected
+  useEffect(() => {
+    const fetchJournalEntries = async () => {
+      if (!selectedGoalId) {
+        setJournalEntries([]);
+        return;
+      }
+
+      try {
+        setLoadingJournalEntries(true);
+        const entries = await apiService.getGoalJournals(selectedGoalId);
+        setJournalEntries(entries || []);
+      } catch (error) {
+        console.error("Failed to fetch journal entries:", error);
+        setJournalEntries([]);
+      } finally {
+        setLoadingJournalEntries(false);
+      }
+    };
+
+    fetchJournalEntries();
   }, [selectedGoalId]);
 
   const handleGoalClick = (goal) => {
@@ -265,8 +290,10 @@ const Dashboard = () => {
         goalText={selectedGoalText}
         journalSummary={journalSummary}
         childrenSummary={childrenSummary}
+        journalEntries={journalEntries}
         loadingJournalSummary={loadingJournalSummary}
         loadingChildrenSummary={loadingChildrenSummary}
+        loadingJournalEntries={loadingJournalEntries}
       />
     </div>
   );
