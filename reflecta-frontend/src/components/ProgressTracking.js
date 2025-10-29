@@ -2,6 +2,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import apiService from "../services/api";
 import { useAuth } from "../contexts/AuthContext";
+import ProgressAnalytics from "./ProgressAnalytics";
+import ProgressCalendar from "./ProgressCalendar";
+import CompletionRings from "./CompletionRings";
+import MilestoneTimeline from "./MilestoneTimeline";
 import "./ProgressTracking.css";
 
 const PERIOD_OPTIONS = [
@@ -310,6 +314,36 @@ const ProgressTracking = () => {
               ))}
             </ul>
           )}
+        </section>
+
+        {/* Enhanced Analytics Components */}
+        <section className="analytics-section">
+          <CompletionRings
+            goalId={selectedGoalId}
+            mandalartData={goalPackages.find(pkg => pkg.mandalartData?.id === selectedGoalId)?.mandalartData}
+            apiService={apiService}
+          />
+        </section>
+
+        <section className="analytics-section">
+          <ProgressCalendar
+            goalId={selectedGoalId}
+            apiService={apiService}
+          />
+        </section>
+
+        <section className="analytics-section">
+          <ProgressAnalytics
+            goalId={selectedGoalId}
+            apiService={apiService}
+          />
+        </section>
+
+        <section className="analytics-section">
+          <MilestoneTimeline
+            goalId={selectedGoalId}
+            apiService={apiService}
+          />
         </section>
       </>
     );

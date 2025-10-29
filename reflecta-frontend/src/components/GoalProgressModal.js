@@ -18,6 +18,11 @@ const GoalProgressModal = ({
     timeSpent: 0,
     notes: "",
     tags: [],
+    isMilestone: false,
+    milestoneTitle: "",
+    milestoneCategory: "custom",
+    completionPercentage: 0,
+    celebrationEmoji: "",
   });
   const [isSaving, setIsSaving] = useState(false);
   const [progressHistory, setProgressHistory] = useState([]);
@@ -96,6 +101,11 @@ const GoalProgressModal = ({
         timeSpent: 0,
         notes: "",
         tags: [],
+        isMilestone: false,
+        milestoneTitle: "",
+        milestoneCategory: "custom",
+        completionPercentage: 0,
+        celebrationEmoji: "",
       });
 
       // Reload history
@@ -262,6 +272,91 @@ const GoalProgressModal = ({
                       </span>
                     ))}
                   </div>
+                </div>
+
+                {/* Milestone Tracking Section */}
+                <div className="milestone-section">
+                  <div className="form-group checkbox-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="isMilestone"
+                        checked={progressData.isMilestone}
+                        onChange={(e) =>
+                          setProgressData((prev) => ({
+                            ...prev,
+                            isMilestone: e.target.checked,
+                          }))
+                        }
+                      />
+                      <span>Mark as Milestone</span>
+                    </label>
+                  </div>
+
+                  {progressData.isMilestone && (
+                    <div className="milestone-fields">
+                      <div className="form-group">
+                        <label htmlFor="milestoneTitle">Milestone Title</label>
+                        <input
+                          type="text"
+                          id="milestoneTitle"
+                          name="milestoneTitle"
+                          value={progressData.milestoneTitle}
+                          onChange={handleInputChange}
+                          placeholder="e.g., First Quarter Complete!"
+                        />
+                      </div>
+
+                      <div className="form-row">
+                        <div className="form-group">
+                          <label htmlFor="milestoneCategory">Category</label>
+                          <select
+                            id="milestoneCategory"
+                            name="milestoneCategory"
+                            value={progressData.milestoneCategory}
+                            onChange={handleInputChange}
+                          >
+                            <option value="quarter">25% - Quarter</option>
+                            <option value="half">50% - Half</option>
+                            <option value="three-quarter">75% - Three Quarter</option>
+                            <option value="complete">100% - Complete</option>
+                            <option value="custom">Custom</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="completionPercentage">
+                            Completion %
+                          </label>
+                          <input
+                            type="number"
+                            id="completionPercentage"
+                            name="completionPercentage"
+                            value={progressData.completionPercentage}
+                            onChange={handleInputChange}
+                            min="0"
+                            max="100"
+                            placeholder="0-100"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="celebrationEmoji">
+                          Celebration Emoji (optional)
+                        </label>
+                        <input
+                          type="text"
+                          id="celebrationEmoji"
+                          name="celebrationEmoji"
+                          value={progressData.celebrationEmoji}
+                          onChange={handleInputChange}
+                          placeholder="🎉 Choose an emoji to celebrate!"
+                          maxLength="2"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <button

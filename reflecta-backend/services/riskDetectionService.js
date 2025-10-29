@@ -58,7 +58,10 @@ async function analyzeJournalEntry(userId, entryId) {
       return null;
     }
 
-    // Create risk alert
+    // Get all counselors
+    const allCounselors = await User.find({ role: "counselor" }).select("_id");
+
+    // Create risk alert - all counselors can see it
     const riskAlert = await RiskAlert.create({
       studentId: userId,
       riskLevel: aiResponse.riskLevel,
@@ -72,12 +75,10 @@ async function analyzeJournalEntry(userId, entryId) {
         recommendations: aiResponse.recommendations || [],
         confidence: aiResponse.confidence,
       },
-      assignedCounselors: (user.privacySettings.assignedCounselors || []).map(
-        (counselorId) => ({
-          counselorId,
-          assignedAt: new Date(),
-        })
-      ),
+      assignedCounselors: allCounselors.map((counselor) => ({
+        counselorId: counselor._id,
+        assignedAt: new Date(),
+      })),
     });
 
     // Send notifications based on risk level
@@ -154,7 +155,10 @@ async function analyzeMoodPattern(userId) {
       riskLevel = "medium";
     }
 
-    // Create risk alert
+    // Get all counselors
+    const allCounselors = await User.find({ role: "counselor" }).select("_id");
+
+    // Create risk alert - all counselors can see it
     const riskAlert = await RiskAlert.create({
       studentId: userId,
       riskLevel,
@@ -176,12 +180,10 @@ async function analyzeMoodPattern(userId) {
         ],
         confidence: 0.8,
       },
-      assignedCounselors: (user.privacySettings.assignedCounselors || []).map(
-        (counselorId) => ({
-          counselorId,
-          assignedAt: new Date(),
-        })
-      ),
+      assignedCounselors: allCounselors.map((counselor) => ({
+        counselorId: counselor._id,
+        assignedAt: new Date(),
+      })),
     });
 
     await sendRiskNotifications(riskAlert);

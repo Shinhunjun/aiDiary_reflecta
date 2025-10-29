@@ -2251,13 +2251,10 @@ app.get(
   requireRole("counselor"),
   async (req, res) => {
     try {
-      const counselorId = req.user.userId;
       const { status, riskLevel, limit = 50, offset = 0 } = req.query;
 
-      // Build query
-      const query = {
-        "assignedCounselors.counselorId": counselorId,
-      };
+      // Build query - all counselors can see all alerts
+      const query = {};
 
       if (status) {
         query.status = status;
@@ -2278,12 +2275,10 @@ app.get(
       // Get total count
       const total = await RiskAlert.countDocuments(query);
 
-      // Get statistics
+      // Get statistics - all alerts
       const stats = await RiskAlert.aggregate([
         {
-          $match: {
-            "assignedCounselors.counselorId": new mongoose.Types.ObjectId(counselorId),
-          },
+          $match: {},
         },
         {
           $group: {

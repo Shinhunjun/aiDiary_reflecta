@@ -1,0 +1,324 @@
+.completion-rings {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.completion-rings-loading,
+.completion-rings-empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: #636e72;
+}
+
+.rings-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.rings-header h3 {
+  font-size: 28px;
+  color: #2d3436;
+  margin-bottom: 8px;
+}
+
+.rings-header p {
+  font-size: 14px;
+  color: #636e72;
+}
+
+/* Main Goal Ring */
+.main-ring-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 50px;
+}
+
+.completion-ring {
+  position: relative;
+  display: inline-block;
+}
+
+.completion-ring.large {
+  width: 280px;
+  height: 280px;
+  margin-bottom: 30px;
+}
+
+.completion-ring.small {
+  width: 140px;
+  height: 140px;
+}
+
+.completion-ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(0deg);
+}
+
+.progress-circle {
+  transition: stroke-dasharray 1s ease-out;
+}
+
+.ring-content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  width: 80%;
+}
+
+.ring-percentage {
+  font-size: 48px;
+  font-weight: 700;
+  color: #2d3436;
+  line-height: 1;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.ring-label {
+  font-size: 14px;
+  color: #636e72;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.ring-sublabel {
+  font-size: 12px;
+  color: #b2bec3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ring-percentage-small {
+  font-size: 24px;
+  font-weight: 700;
+  color: #2d3436;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.ring-label-small {
+  font-size: 11px;
+  color: #636e72;
+  font-weight: 600;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.3;
+}
+
+/* Main Goal Stats */
+.main-goal-stats {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: #f8f9fa;
+  padding: 20px 40px;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: #6c5ce7;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.stat-text {
+  font-size: 12px;
+  color: #636e72;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: #dfe6e9;
+}
+
+/* Sub Goals Rings */
+.sub-rings-container {
+  margin-top: 40px;
+}
+
+.sub-rings-container h4 {
+  font-size: 20px;
+  color: #2d3436;
+  margin-bottom: 25px;
+  text-align: center;
+}
+
+.sub-rings-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 30px;
+  justify-items: center;
+}
+
+.completion-ring.small {
+  transition: transform 0.3s ease;
+}
+
+.completion-ring.small:hover {
+  transform: scale(1.05);
+}
+
+/* Completion Legend */
+.completion-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-top: 40px;
+  padding-top: 30px;
+  border-top: 1px solid #dfe6e9;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-circle {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.legend-item span {
+  font-size: 12px;
+  color: #636e72;
+  white-space: nowrap;
+}
+
+/* Loading Spinner */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #6c5ce7;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+/* Animation for progress circles */
+@keyframes fillProgress {
+  from {
+    stroke-dasharray: 0 502.4;
+  }
+}
+
+.progress-circle {
+  animation: fillProgress 1.5s ease-out;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .completion-rings {
+    padding: 20px;
+  }
+
+  .rings-header h3 {
+    font-size: 24px;
+  }
+
+  .completion-ring.large {
+    width: 220px;
+    height: 220px;
+  }
+
+  .ring-percentage {
+    font-size: 36px;
+  }
+
+  .main-goal-stats {
+    padding: 15px 25px;
+    gap: 15px;
+  }
+
+  .stat-number {
+    font-size: 26px;
+  }
+
+  .sub-rings-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 20px;
+  }
+
+  .completion-ring.small {
+    width: 120px;
+    height: 120px;
+  }
+
+  .completion-legend {
+    gap: 12px;
+  }
+
+  .legend-item span {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 480px) {
+  .completion-ring.large {
+    width: 200px;
+    height: 200px;
+  }
+
+  .ring-percentage {
+    font-size: 32px;
+  }
+
+  .main-goal-stats {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .stat-divider {
+    width: 60px;
+    height: 1px;
+  }
+
+  .sub-rings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .completion-legend {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

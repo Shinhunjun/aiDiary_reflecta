@@ -225,6 +225,78 @@
   font-weight: 500;
 }
 
+/* Milestone Section Styles */
+.milestone-section {
+  border-top: 2px solid #334155;
+  padding-top: 20px;
+  margin-top: 10px;
+}
+
+.checkbox-group {
+  flex-direction: row;
+  align-items: center;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #6366f1;
+}
+
+.checkbox-label span {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.milestone-fields {
+  margin-top: 20px;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+  border-radius: 12px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    max-height: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    max-height: 500px;
+    transform: translateY(0);
+  }
+}
+
+.milestone-fields .form-group label {
+  color: #e0e7ff;
+  font-weight: 600;
+}
+
+.milestone-fields input,
+.milestone-fields select {
+  background: #1e293b;
+  border-color: #6366f1;
+}
+
+.milestone-fields input:focus,
+.milestone-fields select:focus {
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
 /* Mobile responsiveness */
 @media (max-width: 768px) {
   .goal-progress-modal {

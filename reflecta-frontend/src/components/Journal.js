@@ -100,6 +100,15 @@ const Journal = () => {
         JSON.stringify(updatedEntries)
       );
 
+      // Automatically trigger risk detection for the saved entry
+      try {
+        await apiService.analyzeJournalRisk(newEntry.entry._id);
+        console.log("Risk analysis completed for journal entry");
+      } catch (riskError) {
+        console.error("Risk analysis failed (non-critical):", riskError);
+        // Don't block the save flow if risk analysis fails
+      }
+
       // Reset form
       setCurrentEntry({
         title: "",

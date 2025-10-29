@@ -166,6 +166,14 @@ class ApiService {
     return this.request(`/goals/${goalId}/progress/summary?${params.toString()}`);
   }
 
+  async getGoalProgressAnalytics(goalId) {
+    return this.request(`/goals/${goalId}/progress/analytics`);
+  }
+
+  async getGoalProgressInsights(goalId) {
+    return this.request(`/goals/${goalId}/progress/insights`);
+  }
+
   // Goal Related Journal methods
   async getGoalJournals(goalId) {
     return this.request(`/test/goals/${goalId}/journals`);

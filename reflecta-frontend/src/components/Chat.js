@@ -181,6 +181,15 @@ const Chat = () => {
       // Trigger refresh in Journal component
       triggerRefresh();
 
+      // Automatically trigger risk detection for the saved entry
+      try {
+        await apiService.analyzeJournalRisk(diaryEntry.entry._id);
+        console.log("Risk analysis completed for diary entry");
+      } catch (riskError) {
+        console.error("Risk analysis failed (non-critical):", riskError);
+        // Don't block the save flow if risk analysis fails
+      }
+
       // 대화 내용 초기화
       setMessages([]);
       setSelectedMessages([]);

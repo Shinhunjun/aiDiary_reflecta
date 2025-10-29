@@ -3086,3 +3086,74 @@ div.mandalart-sub-cell.mandalart-sub-connected.mandalart-sub-color-8 {
     font-size: 11px;
   }
 }
+
+/* Progress Overlay Styles */
+.progress-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.85);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.progress-percentage {
+  font-size: 14px;
+  font-weight: 700;
+  color: white;
+  text-align: center;
+}
+
+.progress-bar {
+  height: 6px;
+  border-radius: 3px;
+  transition: width 0.5s ease-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mandalart-outline-btn.active {
+  background: linear-gradient(135deg, #6c5ce7 0%, #8b5cf6 100%);
+  color: white;
+  border-color: #6c5ce7;
+}
+
+/* Adjust cell positioning for overlay */
+.mandalart-cell {
+  position: relative;
+  overflow: hidden;
+}
+
+.mandalart-cell.has-goal {
+  padding-bottom: 40px; /* Make room for progress overlay */
+}
+
+/* Mobile responsive progress overlay */
+@media (max-width: 768px) {
+  .progress-overlay {
+    padding: 6px;
+  }
+
+  .progress-percentage {
+    font-size: 12px;
+  }
+
+  .progress-bar {
+    height: 4px;
+  }
+}

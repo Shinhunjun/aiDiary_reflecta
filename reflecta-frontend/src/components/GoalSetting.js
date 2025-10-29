@@ -60,6 +60,8 @@ const GoalSetting = () => {
   const [expandedGoal, setExpandedGoal] = useState(null); // For overlay expansion
   const [expandedGoalColorIndex, setExpandedGoalColorIndex] = useState(null);
   const [expandedGoalParent, setExpandedGoalParent] = useState(null);
+  const [showProgressOverlay, setShowProgressOverlay] = useState(false);
+  const [progressAnalytics, setProgressAnalytics] = useState(null);
   const safeSubGoals =
     (mainMandalart?.subGoals || []).filter((_, index) => index !== 4);
   const primaryGoalsCount = safeSubGoals.filter(
@@ -201,6 +203,32 @@ const GoalSetting = () => {
       return updatedCurrent || mainMandalart;
     });
   }, [mainMandalart]);
+
+  // Load progress analytics
+  useEffect(() => {
+    const loadProgressAnalytics = async () => {
+      if (!mainMandalart?.id || !showProgressOverlay) return;
+
+      try {
+        const data = await apiService.getGoalProgressAnalytics(mainMandalart.id);
+        setProgressAnalytics(data);
+      } catch (err) {
+        console.error("Failed to load progress analytics:", err);
+      }
+    };
+
+    loadProgressAnalytics();
+  }, [mainMandalart?.id, showProgressOverlay]);
+
+  // Helper function to calculate completion percentage for a goal
+  const getGoalCompletionPercentage = (goal) => {
+    if (!goal) return 0;
+    if (!goal.subGoals || goal.subGoals.length === 0) {
+      return goal.completed ? 100 : 0;
+    }
+    const completedSubGoals = goal.subGoals.filter(sg => sg && sg.completed).length;
+    return Math.round((completedSubGoals / goal.subGoals.length) * 100);
+  };
 
   // Function to update a goal anywhere in the mainMandalart tree
   const updateGoalInTree = (tree, targetId, updates) => {
@@ -685,6 +713,14 @@ const GoalSetting = () => {
             </Link>
             <button
               type="button"
+              className={`mandalart-outline-btn ${showProgressOverlay ? 'active' : ''}`}
+              onClick={() => setShowProgressOverlay(!showProgressOverlay)}
+              title="Toggle progress overlay"
+            >
+              {showProgressOverlay ? '📊 Hide Progress' : '📊 Show Progress'}
+            </button>
+            <button
+              type="button"
               className="mandalart-solid-btn"
               onClick={openGoalAssistant}
             >
@@ -876,6 +912,22 @@ const GoalSetting = () => {
                               </div>
                             )}
                           </div>
+                          {goal && goal.text && showProgressOverlay && (
+                            <div className="progress-overlay">
+                              <div className="progress-percentage">
+                                {getGoalCompletionPercentage(goal)}%
+                              </div>
+                              <div
+                                className="progress-bar"
+                                style={{
+                                  width: `${getGoalCompletionPercentage(goal)}%`,
+                                  background: getGoalCompletionPercentage(goal) === 100
+                                    ? '#00b894'
+                                    : `linear-gradient(90deg, #6c5ce7 0%, #a29bfe 100%)`
+                                }}
+                              ></div>
+                            </div>
+                          )}
                         </div>
                       );
                     }
@@ -978,6 +1030,22 @@ const GoalSetting = () => {
                             </div>
                           )}
                         </div>
+                        {goal && goal.text && showProgressOverlay && (
+                          <div className="progress-overlay">
+                            <div className="progress-percentage">
+                              {getGoalCompletionPercentage(goal)}%
+                            </div>
+                            <div
+                              className="progress-bar"
+                              style={{
+                                width: `${getGoalCompletionPercentage(goal)}%`,
+                                background: getGoalCompletionPercentage(goal) === 100
+                                  ? '#00b894'
+                                  : `linear-gradient(90deg, #6c5ce7 0%, #a29bfe 100%)`
+                              }}
+                            ></div>
+                          </div>
+                        )}
                         {goal && goal.text && (
                           <div className="mandalart-expand-indicator">Expand</div>
                         )}

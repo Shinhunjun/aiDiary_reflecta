@@ -12,14 +12,11 @@ const PrivacySettings = () => {
       enabled: false,
       shareLevel: "summary",
     },
-    assignedCounselors: [],
   });
-  const [counselors, setCounselors] = useState([]);
   const [userRole, setUserRole] = useState("student");
 
   useEffect(() => {
     fetchPrivacySettings();
-    fetchCounselors();
   }, []);
 
   const fetchPrivacySettings = async () => {
@@ -30,7 +27,6 @@ const PrivacySettings = () => {
           enabled: false,
           shareLevel: "summary",
         },
-        assignedCounselors: [],
       });
       setUserRole(response.role);
     } catch (error) {
@@ -38,15 +34,6 @@ const PrivacySettings = () => {
       toast.error("Failed to load privacy settings");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchCounselors = async () => {
-    try {
-      const response = await ApiService.getCounselors();
-      setCounselors(response.counselors || []);
-    } catch (error) {
-      console.error("Failed to fetch counselors:", error);
     }
   };
 
@@ -104,39 +91,6 @@ const PrivacySettings = () => {
     }
   };
 
-  const handleToggleCounselor = async (counselorId) => {
-    setSaving(true);
-    try {
-      const currentCounselors = privacySettings.assignedCounselors || [];
-      const isCurrentlyAssigned = currentCounselors.some(
-        (id) => id === counselorId
-      );
-
-      const updatedCounselors = isCurrentlyAssigned
-        ? currentCounselors.filter((id) => id !== counselorId)
-        : [...currentCounselors, counselorId];
-
-      await ApiService.updatePrivacySettings({
-        assignedCounselors: updatedCounselors,
-      });
-
-      setPrivacySettings({
-        ...privacySettings,
-        assignedCounselors: updatedCounselors,
-      });
-
-      toast.success(
-        isCurrentlyAssigned
-          ? "Counselor removed successfully"
-          : "Counselor added successfully"
-      );
-    } catch (error) {
-      console.error("Failed to update counselors:", error);
-      toast.error("Failed to update counselors");
-    } finally {
-      setSaving(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -158,7 +112,6 @@ const PrivacySettings = () => {
 
   const riskMonitoringEnabled = privacySettings.riskMonitoring?.enabled || false;
   const shareLevel = privacySettings.riskMonitoring?.shareLevel || "summary";
-  const assignedCounselors = privacySettings.assignedCounselors || [];
 
   return (
     <motion.div
@@ -202,7 +155,7 @@ const PrivacySettings = () => {
           <p className="description">
             When enabled, our AI system will analyze your journal entries and
             mood patterns to detect signs of mental health concerns. If a
-            potential risk is detected, your assigned counselors will be
+            potential risk is detected, all counselors will be
             notified and can offer support.
           </p>
 
@@ -212,8 +165,8 @@ const PrivacySettings = () => {
               <strong>Your Privacy Matters</strong>
               <p>
                 You have full control over what information is shared. You can
-                choose your privacy level below and select which counselors have
-                access to your information. You can change these settings or
+                choose your privacy level below. All counselors will have
+                access to risk alerts based on your privacy settings. You can change these settings or
                 disable monitoring at any time.
               </p>
             </div>
@@ -324,91 +277,6 @@ const PrivacySettings = () => {
         </motion.div>
       )}
 
-      {/* Counselor Selection */}
-      {riskMonitoringEnabled && (
-        <motion.div
-          className="settings-card"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <div className="card-header">
-            <h2>Select Counselors</h2>
-            <span className="badge">
-              {assignedCounselors.length} selected
-            </span>
-          </div>
-
-          <div className="card-body">
-            <p className="description">
-              Choose which counselors can receive alerts about your mental
-              health. You must select at least one counselor for monitoring to
-              work.
-            </p>
-
-            {assignedCounselors.length === 0 && (
-              <div className="alert alert-warning">
-                ⚠️ Please select at least one counselor to receive alerts.
-                Risk monitoring is active but no one will be notified until you
-                assign a counselor.
-              </div>
-            )}
-
-            <div className="counselors-list">
-              {counselors.length === 0 ? (
-                <div className="no-counselors">
-                  No counselors are available at the moment. Please contact your
-                  administrator.
-                </div>
-              ) : (
-                counselors.map((counselor) => {
-                  const isAssigned = assignedCounselors.some(
-                    (id) => id === counselor._id
-                  );
-
-                  return (
-                    <div
-                      key={counselor._id}
-                      className={`counselor-item ${
-                        isAssigned ? "selected" : ""
-                      }`}
-                      onClick={() => handleToggleCounselor(counselor._id)}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <div className="counselor-avatar">
-                        {counselor.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div className="counselor-info">
-                        <h3>{counselor.name}</h3>
-                        <p>{counselor.email}</p>
-                        {counselor.counselorProfile?.specialization && (
-                          <div className="specializations">
-                            {counselor.counselorProfile.specialization.map(
-                              (spec, idx) => (
-                                <span key={idx} className="spec-badge">
-                                  {spec}
-                                </span>
-                              )
-                            )}
-                          </div>
-                        )}
-                      </div>
-                      <div className="checkbox-wrapper">
-                        <input
-                          type="checkbox"
-                          checked={isAssigned}
-                          readOnly
-                        />
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-        </motion.div>
-      )}
 
       {/* Information Section */}
       <motion.div
@@ -447,7 +315,7 @@ const PrivacySettings = () => {
               <div className="info-icon">🤝</div>
               <h3>Counselor Support</h3>
               <p>
-                Your counselors can view alerts, track patterns over time, and
+                All counselors can view alerts, track patterns over time, and
                 reach out to offer support when needed. They respect your
                 privacy settings at all times.
               </p>
@@ -457,9 +325,8 @@ const PrivacySettings = () => {
               <div className="info-icon">🔐</div>
               <h3>Data Security</h3>
               <p>
-                All data is encrypted and stored securely. Only your assigned
-                counselors can access your information, and only within the
-                limits you set.
+                All data is encrypted and stored securely. Counselors can access your risk alert information
+                within the limits you set in your privacy settings.
               </p>
             </div>
           </div>
