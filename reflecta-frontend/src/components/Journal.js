@@ -19,6 +19,10 @@ const Journal = () => {
   });
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterMood, setFilterMood] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
+  const [viewMode, setViewMode] = useState("grid"); // grid or timeline
 
   // Load journal entries from API
   const loadJournalEntries = useCallback(async () => {
@@ -169,6 +173,64 @@ const Journal = () => {
     return moodEmojis[mood] || "😐";
   };
 
+  // Filter and sort entries
+  const getFilteredAndSortedEntries = () => {
+    let filtered = [...journalEntries];
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(
+        (entry) =>
+          entry.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          entry.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          entry.tags?.some((tag) =>
+            tag.toLowerCase().includes(searchQuery.toLowerCase())
+          )
+      );
+    }
+
+    // Apply mood filter
+    if (filterMood !== "all") {
+      filtered = filtered.filter((entry) => entry.mood === filterMood);
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "newest":
+          return new Date(b.date) - new Date(a.date);
+        case "oldest":
+          return new Date(a.date) - new Date(b.date);
+        case "mood":
+          return (a.mood || "").localeCompare(b.mood || "");
+        default:
+          return 0;
+      }
+    });
+
+    return filtered;
+  };
+
+  // Group entries by date for timeline view
+  const groupEntriesByDate = (entries) => {
+    const grouped = {};
+    entries.forEach((entry) => {
+      const date = new Date(entry.date);
+      const monthYear = date.toLocaleDateString("en-US", {
+        year: "numeric",
+        month: "long",
+      });
+      if (!grouped[monthYear]) {
+        grouped[monthYear] = [];
+      }
+      grouped[monthYear].push(entry);
+    });
+    return grouped;
+  };
+
+  const filteredEntries = getFilteredAndSortedEntries();
+  const groupedEntries = groupEntriesByDate(filteredEntries);
+
   return (
     <div className="journal-container">
       <div className="journal-header">
@@ -305,14 +367,80 @@ const Journal = () => {
 
         {activeTab === "entries" && (
           <div className="entries-list">
+            {/* Filter and Search Controls */}
+            <div className="entries-controls">
+              <div className="search-bar">
+                <input
+                  type="text"
+                  placeholder="Search entries by title, content, or tags..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="search-input"
+                />
+              </div>
+
+              <div className="filter-controls">
+                <select
+                  value={filterMood}
+                  onChange={(e) => setFilterMood(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">All Moods</option>
+                  <option value="happy">😊 Happy</option>
+                  <option value="excited">🤩 Excited</option>
+                  <option value="calm">😌 Calm</option>
+                  <option value="neutral">😐 Neutral</option>
+                  <option value="anxious">😰 Anxious</option>
+                  <option value="sad">😢 Sad</option>
+                  <option value="grateful">🙏 Grateful</option>
+                </select>
+
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="mood">Sort by Mood</option>
+                </select>
+
+                <div className="view-toggle">
+                  <button
+                    className={viewMode === "grid" ? "active" : ""}
+                    onClick={() => setViewMode("grid")}
+                    title="Grid View"
+                  >
+                    ⊞
+                  </button>
+                  <button
+                    className={viewMode === "timeline" ? "active" : ""}
+                    onClick={() => setViewMode("timeline")}
+                    title="Timeline View"
+                  >
+                    ☰
+                  </button>
+                </div>
+              </div>
+
+              <div className="entries-count">
+                Showing {filteredEntries.length} of {journalEntries.length} entries
+              </div>
+            </div>
+
             {journalEntries.length === 0 ? (
               <div className="empty-state">
                 <h3>No entries yet</h3>
                 <p>Start writing your first journal entry to see it here.</p>
               </div>
-            ) : (
+            ) : filteredEntries.length === 0 ? (
+              <div className="empty-state">
+                <h3>No matching entries</h3>
+                <p>Try adjusting your search or filters.</p>
+              </div>
+            ) : viewMode === "grid" ? (
               <div className="entries-grid">
-                {journalEntries.map((entry) => (
+                {filteredEntries.map((entry) => (
                   <div
                     key={entry._id || entry.id}
                     className="entry-card"
@@ -345,6 +473,60 @@ const Journal = () => {
                       {entry.isAIGenerated && (
                         <span className="ai-badge">AI Generated</span>
                       )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="entries-timeline">
+                {Object.entries(groupedEntries).map(([monthYear, entries]) => (
+                  <div key={monthYear} className="timeline-section">
+                    <h3 className="timeline-month">{monthYear}</h3>
+                    <div className="timeline-entries">
+                      {entries.map((entry) => (
+                        <div
+                          key={entry._id || entry.id}
+                          className="timeline-entry"
+                          onClick={() => setSelectedEntry(entry)}
+                        >
+                          <div className="timeline-date-marker">
+                            <div className="timeline-dot" />
+                            <span className="timeline-date">
+                              {new Date(entry.date).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </span>
+                          </div>
+                          <div className="timeline-content">
+                            <div className="timeline-header">
+                              <h4>{entry.title}</h4>
+                              <span className="mood-emoji">
+                                {getMoodEmoji(entry.mood)}
+                              </span>
+                            </div>
+                            <p className="timeline-preview">
+                              {entry.content.length > 120
+                                ? `${entry.content.substring(0, 120)}...`
+                                : entry.content}
+                            </p>
+                            <div className="timeline-meta">
+                              {entry.tags && entry.tags.length > 0 && (
+                                <div className="entry-tags">
+                                  {entry.tags.slice(0, 3).map((tag, index) => (
+                                    <span key={index} className="tag-small">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                              {entry.isAIGenerated && (
+                                <span className="ai-badge">AI Generated</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 ))}
