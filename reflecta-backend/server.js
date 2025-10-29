@@ -771,6 +771,408 @@ app.post(
   }
 );
 
+// Advanced Analytics Endpoint
+app.get(
+  "/api/goals/:goalId/progress/analytics",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = mongoose.Types.ObjectId.isValid(req.user.userId)
+        ? new mongoose.Types.ObjectId(req.user.userId)
+        : req.user.userId;
+
+      // Get all progress entries for velocity calculation
+      const allProgress = await GoalProgress.find({
+        userId,
+        goalId,
+      }).sort({ date: 1 });
+
+      // Calculate velocity (progress per week)
+      const velocityData = [];
+      if (allProgress.length > 0) {
+        const startDate = new Date(allProgress[0].date);
+        const endDate = new Date();
+        const weeksDiff = Math.ceil(
+          (endDate - startDate) / (7 * 24 * 60 * 60 * 1000)
+        );
+
+        for (let i = 0; i < weeksDiff; i++) {
+          const weekStart = new Date(startDate);
+          weekStart.setDate(weekStart.getDate() + i * 7);
+          const weekEnd = new Date(weekStart);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+
+          const weekProgress = allProgress.filter((p) => {
+            const pDate = new Date(p.date);
+            return pDate >= weekStart && pDate < weekEnd;
+          });
+
+          velocityData.push({
+            week: i + 1,
+            weekStart: weekStart.toISOString(),
+            count: weekProgress.length,
+            timeSpent: weekProgress.reduce((sum, p) => sum + (p.timeSpent || 0), 0),
+            completionPercentage:
+              weekProgress.reduce((sum, p) => sum + (p.completionPercentage || 0), 0) /
+              (weekProgress.length || 1),
+          });
+        }
+      }
+
+      // Get goal structure for completion calculation
+      const goalDoc = await Goal.findOne({
+        userId,
+        "mandalartData.id": goalId,
+      });
+
+      let totalSubGoals = 0;
+      let completedSubGoals = 0;
+      if (goalDoc?.mandalartData) {
+        const countGoals = (node) => {
+          if (!node) return;
+          totalSubGoals++;
+          if (node.completed) completedSubGoals++;
+          if (Array.isArray(node.subGoals)) {
+            node.subGoals.filter(Boolean).forEach(countGoals);
+          }
+        };
+        if (Array.isArray(goalDoc.mandalartData.subGoals)) {
+          goalDoc.mandalartData.subGoals.filter(Boolean).forEach(countGoals);
+        }
+      }
+
+      const overallCompletion =
+        totalSubGoals > 0 ? (completedSubGoals / totalSubGoals) * 100 : 0;
+
+      // Mood correlation with progress type
+      const moodCorrelation = await GoalProgress.aggregate([
+        { $match: { userId, goalId } },
+        {
+          $group: {
+            _id: { mood: "$mood", progressType: "$progressType" },
+            count: { $sum: 1 },
+            avgTimeSpent: { $avg: "$timeSpent" },
+            avgCompletion: { $avg: "$completionPercentage" },
+          },
+        },
+        { $sort: { count: -1 } },
+      ]);
+
+      // Difficulty distribution
+      const difficultyStats = await GoalProgress.aggregate([
+        { $match: { userId, goalId } },
+        {
+          $group: {
+            _id: "$difficulty",
+            count: { $sum: 1 },
+            avgTimeSpent: { $avg: "$timeSpent" },
+            avgCompletion: { $avg: "$completionPercentage" },
+          },
+        },
+      ]);
+
+      // Milestone tracking
+      const milestones = await GoalProgress.find({
+        userId,
+        goalId,
+        isMilestone: true,
+      }).sort({ date: -1 });
+
+      // Activity heatmap data (for calendar view)
+      const heatmapData = await GoalProgress.aggregate([
+        { $match: { userId, goalId } },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$date" },
+            },
+            count: { $sum: 1 },
+            totalTime: { $sum: "$timeSpent" },
+            types: { $addToSet: "$progressType" },
+          },
+        },
+        { $sort: { _id: 1 } },
+      ]);
+
+      // Predicted completion date based on velocity
+      let predictedCompletion = null;
+      if (velocityData.length > 1 && overallCompletion < 100) {
+        const recentVelocity = velocityData.slice(-4); // Last 4 weeks
+        const avgWeeklyProgress =
+          recentVelocity.reduce((sum, w) => sum + w.completionPercentage, 0) /
+          recentVelocity.length;
+        if (avgWeeklyProgress > 0) {
+          const remainingPercentage = 100 - overallCompletion;
+          const weeksToComplete = remainingPercentage / avgWeeklyProgress;
+          const predicted = new Date();
+          predicted.setDate(predicted.getDate() + weeksToComplete * 7);
+          predictedCompletion = predicted.toISOString();
+        }
+      }
+
+      res.json({
+        goalId,
+        overallCompletion: Math.round(overallCompletion * 10) / 10,
+        totalSubGoals,
+        completedSubGoals,
+        velocityData,
+        moodCorrelation: moodCorrelation.map((item) => ({
+          mood: item._id.mood,
+          progressType: item._id.progressType,
+          count: item.count,
+          avgTimeSpent: Math.round(item.avgTimeSpent || 0),
+          avgCompletion: Math.round((item.avgCompletion || 0) * 10) / 10,
+        })),
+        difficultyStats: difficultyStats.map((item) => ({
+          difficulty: item._id,
+          count: item.count,
+          avgTimeSpent: Math.round(item.avgTimeSpent || 0),
+          avgCompletion: Math.round((item.avgCompletion || 0) * 10) / 10,
+        })),
+        milestones: milestones.map((m) => ({
+          id: m._id,
+          title: m.milestoneTitle || m.title,
+          category: m.milestoneCategory,
+          date: m.date,
+          completionPercentage: m.completionPercentage,
+          emoji: m.celebrationEmoji,
+        })),
+        heatmapData: heatmapData.map((item) => ({
+          date: item._id,
+          count: item.count,
+          totalTime: item.totalTime,
+          types: item.types,
+        })),
+        predictedCompletion,
+      });
+    } catch (error) {
+      console.error("Get goal analytics error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
+// AI-Powered Insights Endpoint
+app.get(
+  "/api/goals/:goalId/progress/insights",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const { goalId } = req.params;
+      const userId = mongoose.Types.ObjectId.isValid(req.user.userId)
+        ? new mongoose.Types.ObjectId(req.user.userId)
+        : req.user.userId;
+
+      // Get progress data
+      const progressEntries = await GoalProgress.find({
+        userId,
+        goalId,
+      })
+        .sort({ date: -1 })
+        .limit(50);
+
+      if (progressEntries.length === 0) {
+        return res.json({
+          insights: [],
+          message: "Not enough data to generate insights yet.",
+        });
+      }
+
+      const insights = [];
+
+      // Pattern 1: Best performing time of day
+      const timePatterns = {};
+      progressEntries.forEach((entry) => {
+        const hour = new Date(entry.date).getHours();
+        const timeOfDay =
+          hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
+        if (!timePatterns[timeOfDay]) {
+          timePatterns[timeOfDay] = { count: 0, totalCompletion: 0 };
+        }
+        timePatterns[timeOfDay].count++;
+        timePatterns[timeOfDay].totalCompletion += entry.completionPercentage || 0;
+      });
+
+      let bestTime = null;
+      let maxAvg = 0;
+      Object.keys(timePatterns).forEach((time) => {
+        const avg = timePatterns[time].totalCompletion / timePatterns[time].count;
+        if (avg > maxAvg) {
+          maxAvg = avg;
+          bestTime = time;
+        }
+      });
+
+      if (bestTime) {
+        insights.push({
+          type: "pattern",
+          category: "timing",
+          title: `You're most productive in the ${bestTime}`,
+          description: `Your ${bestTime} check-ins show ${Math.round(maxAvg)}% higher completion rates.`,
+          icon: bestTime === "morning" ? "🌅" : bestTime === "afternoon" ? "☀️" : "🌙",
+          confidence: timePatterns[bestTime].count >= 5 ? "high" : "medium",
+        });
+      }
+
+      // Pattern 2: Mood-productivity correlation
+      const moodStats = {};
+      progressEntries.forEach((entry) => {
+        if (entry.mood && entry.completionPercentage > 0) {
+          if (!moodStats[entry.mood]) {
+            moodStats[entry.mood] = { count: 0, totalCompletion: 0 };
+          }
+          moodStats[entry.mood].count++;
+          moodStats[entry.mood].totalCompletion += entry.completionPercentage;
+        }
+      });
+
+      const sortedMoods = Object.entries(moodStats)
+        .map(([mood, data]) => ({
+          mood,
+          avgCompletion: data.totalCompletion / data.count,
+          count: data.count,
+        }))
+        .sort((a, b) => b.avgCompletion - a.avgCompletion);
+
+      if (sortedMoods.length > 0 && sortedMoods[0].count >= 3) {
+        const bestMood = sortedMoods[0];
+        const moodEmojis = {
+          happy: "😊",
+          excited: "🎉",
+          calm: "😌",
+          grateful: "🙏",
+          neutral: "😐",
+          anxious: "😰",
+          sad: "😢",
+          reflective: "🤔",
+        };
+        insights.push({
+          type: "correlation",
+          category: "mood",
+          title: `Your best work happens when you're ${bestMood.mood}`,
+          description: `Progress entries logged while feeling ${bestMood.mood} show ${Math.round(bestMood.avgCompletion)}% completion on average.`,
+          icon: moodEmojis[bestMood.mood] || "💡",
+          confidence: bestMood.count >= 5 ? "high" : "medium",
+        });
+      }
+
+      // Pattern 3: Consistency streak
+      const sortedByDate = [...progressEntries].sort(
+        (a, b) => new Date(a.date) - new Date(b.date)
+      );
+      let currentStreak = 1;
+      let maxStreak = 1;
+      for (let i = 1; i < sortedByDate.length; i++) {
+        const prevDate = new Date(sortedByDate[i - 1].date);
+        const currDate = new Date(sortedByDate[i].date);
+        const dayDiff = Math.floor((currDate - prevDate) / (1000 * 60 * 60 * 24));
+        if (dayDiff <= 2) {
+          // Allow 1 day gap
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 1;
+        }
+      }
+
+      if (maxStreak >= 3) {
+        insights.push({
+          type: "achievement",
+          category: "consistency",
+          title: `${maxStreak}-day streak achieved!`,
+          description: `You've maintained consistent progress for ${maxStreak} days. Keep the momentum going!`,
+          icon: "🔥",
+          confidence: "high",
+        });
+      }
+
+      // Pattern 4: Time investment efficiency
+      const entriesWithTime = progressEntries.filter((e) => e.timeSpent > 0);
+      if (entriesWithTime.length >= 5) {
+        const avgTimePerEntry =
+          entriesWithTime.reduce((sum, e) => sum + e.timeSpent, 0) /
+          entriesWithTime.length;
+        const avgCompletionPerEntry =
+          entriesWithTime.reduce((sum, e) => sum + (e.completionPercentage || 0), 0) /
+          entriesWithTime.length;
+        const efficiency = avgCompletionPerEntry / avgTimePerEntry;
+
+        insights.push({
+          type: "metric",
+          category: "efficiency",
+          title: `Average ${Math.round(avgTimePerEntry)} minutes per check-in`,
+          description: `Your time investment is ${efficiency > 0.5 ? "highly efficient" : "moderate"}. ${Math.round(avgCompletionPerEntry)}% progress per session.`,
+          icon: "⏱️",
+          confidence: "high",
+        });
+      }
+
+      // Pattern 5: Difficulty preference
+      const difficultyCount = {
+        easy: 0,
+        medium: 0,
+        hard: 0,
+      };
+      progressEntries.forEach((entry) => {
+        if (entry.difficulty) {
+          difficultyCount[entry.difficulty]++;
+        }
+      });
+      const totalWithDifficulty = Object.values(difficultyCount).reduce(
+        (a, b) => a + b,
+        0
+      );
+      if (totalWithDifficulty >= 5) {
+        const sortedDifficulty = Object.entries(difficultyCount).sort(
+          (a, b) => b[1] - a[1]
+        );
+        const preference = sortedDifficulty[0][0];
+        const percentage = Math.round(
+          (sortedDifficulty[0][1] / totalWithDifficulty) * 100
+        );
+        insights.push({
+          type: "preference",
+          category: "difficulty",
+          title: `You prefer ${preference} difficulty tasks`,
+          description: `${percentage}% of your progress entries are marked as ${preference} difficulty.`,
+          icon: preference === "hard" ? "💪" : preference === "medium" ? "⚖️" : "✅",
+          confidence: percentage >= 60 ? "high" : "medium",
+        });
+      }
+
+      // Recommendation: Based on gaps
+      const now = new Date();
+      const lastEntry = new Date(progressEntries[0].date);
+      const daysSinceLastEntry = Math.floor((now - lastEntry) / (1000 * 60 * 60 * 24));
+
+      if (daysSinceLastEntry >= 3) {
+        insights.push({
+          type: "recommendation",
+          category: "consistency",
+          title: "Time for a check-in!",
+          description: `It's been ${daysSinceLastEntry} days since your last progress update. Regular check-ins help maintain momentum.`,
+          icon: "📝",
+          confidence: "high",
+        });
+      }
+
+      res.json({
+        goalId,
+        insights,
+        dataPoints: progressEntries.length,
+        analyzedPeriod: {
+          start: sortedByDate[0]?.date,
+          end: sortedByDate[sortedByDate.length - 1]?.date,
+        },
+      });
+    } catch (error) {
+      console.error("Get goal insights error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  }
+);
+
 // Goal Related Journal Entries Routes
 app.get("/api/goals/:goalId/journals", authenticateToken, async (req, res) => {
   try {

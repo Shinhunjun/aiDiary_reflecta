@@ -61,6 +61,23 @@ const goalProgressSchema = new mongoose.Schema(
       default: 0,
     },
     notes: String,
+    // Milestone tracking
+    isMilestone: {
+      type: Boolean,
+      default: false,
+    },
+    milestoneTitle: String,
+    milestoneCategory: {
+      type: String,
+      enum: ["quarter", "half", "three-quarter", "complete", "custom"],
+    },
+    completionPercentage: {
+      type: Number,
+      min: 0,
+      max: 100,
+      default: 0,
+    },
+    celebrationEmoji: String,
   },
   {
     timestamps: true,
